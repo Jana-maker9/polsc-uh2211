@@ -56,9 +56,10 @@ We can also fairly easily visualize this relationship by plotting the data and t
 
 ```{r}
 #| label: linear regression plot
+
 ```
 
-## Where does that best fit line come from?
+## Where does that best fit line come from? OLS as a conditional mean estimator
 
 **When the independent variable ($x_i$) is binary, the best fit is really the average.** It is quite intuitive: if you want to predict a quantity, your best bet is to set the prediction is its average value and attribute everything else to noise. Let's see this in practice, looking at home and away games:
 
@@ -66,10 +67,14 @@ We can also fairly easily visualize this relationship by plotting the data and t
 #| label: linear regression with binary independent variable
 ```
 
-When the independent variable is continuous, the best fit line is a bit more complicated. It is given by the following formulas:
-$$
-\hat{\beta} = \frac{\text{cov}(x, y)}{\sigma_x^2}
-$$
+So the best fit line is really just the average of the dependent variable for each value of the independent variable. In other words, the best fit is the mean $y$ conditional on $x$ taking a specific value. This is why we call linear regression a **conditional mean estimator**: it estimates the mean of $y$ conditional on $x$.
+
+This generalizes to continuous independent variables. Consider our example of goals scored ($y$) over time ($x$). The conditional mean is the mean number of goals in a given season. We can represent that as a series of points: each point is the mean number of goals in a given season. The best fit line summarizes all these points into a line. 
+
+```{r}
+#| label: linear regression with continuous independent variable
+
+```
 
 ## Linear regression with multiple independent variables
 
@@ -77,6 +82,8 @@ We can also have more than one independent variable. In that case, the model loo
 $$
 y_i = \alpha + \beta_1 x_{1i} + \beta_2 x_{2i} + \ldots + \epsilon_i
 $$
+
+Let's combine home/away and season to see how they jointly affect the number of goals scored in a match.
 
 ```{r}
 #| label: multiple linear regression
@@ -87,7 +94,6 @@ $$
 ## What if my data is not linear? A word
 
 ## A word on correlation vs. causation
-
 
 ```{r}
 #| label: correlation vs causation
@@ -101,7 +107,7 @@ gss <- read_csv("./data/lecture-7-gss.csv") |>
       "MALE" ~ 0,
       .default = NA
     ),
-    height = ifelse(rheight < 0, 0, rheight),
+    height = ifelse(rheight < 0, NA, rheight),
     height = height * 2.54,
     income = case_match(
       rincome,
