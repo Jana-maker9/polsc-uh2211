@@ -1,0 +1,21 @@
+---
+title: "Lecture 8-9: advanced linear regression, tables and plots"
+---
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+library(modelsummary)
+df <- read_csv("./data/lecture-7-gss.csv")
+```
+
+## Model fit: the R-squared
+
+## Categorical variables
+
+## Linear hypotheses
+
+## Interaction terms
+
+
