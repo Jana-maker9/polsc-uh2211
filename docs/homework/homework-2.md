@@ -8,7 +8,7 @@ setup.
 Load the test scores dataset
 [homework-2-scores.csv](../../data/homework-2-scores.csv), uploaded to
 the course’s GitHub repository. Also on the course’s GitHub repository
-is a [codebook](../../data/homework-2-scores-codebook.csv) describing
+is a [codebook](../../data/homework-2-scores-codebook.md) describing
 each variable in the dataset `homework-2-scores.csv`. Use the dataset to
 address the following questions.
 
