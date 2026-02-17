@@ -14,6 +14,7 @@ Lecture notes for course POLSC-UH2211
 ## Homework assignments
 
 - [Homework 1](/docs/homework/homework-1.md)
+- [Homework 2](/docs/homework/homework-2.md)
 
 ## Getting started
 

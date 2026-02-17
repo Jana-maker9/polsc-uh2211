@@ -7,7 +7,7 @@ This is a problem set designed to make sure you've got the basics of R down. Fee
 1. have a look at the .qmd file of this document to get another example,
 2. use the starter template at [https://github.com/recap-org/template-r-small](https://github.com/recap-org/template-r-small) for a clean starting setup. 
 
-You must complete this problem set entirely on your own. We want to see the code that you wrote to get there, so Be sure to that your code chunks are visible in your output (they should be by default). See this qmd file if you have no clue what we're talking about. 
+You must complete this problem set entirely on your own. We want to see the code that you wrote to get there, so make sure that your code chunks are visible in your output (they should be by default). See this qmd file if you have no clue what we're talking about. 
 
 ```{r}
 #| label: hidden-chunk
@@ -41,7 +41,7 @@ Create a fake `data.frame` (or `tibble`) of at least 10 observations and 5 colum
 
 ## Problem 2: Basic data manipulation and summary.
 
-Load the dataset [tik_tok_data.csv](../../data/homework-1-tiktok.csv), located on the class site.
+Load the dataset [homework-1-tiktok.csv](../../data/homework-1-tiktok.csv), located on course's GitHub repository.
 
 1. What is the mean number of views?
 
@@ -66,16 +66,6 @@ Load the dataset [lecture-1-england.csv](../../data/lecture-1-england.csv), loca
 <!-- 7. Using the "overlapping confidence intervals" approach, test the hypothesis that **timesaver9000** and **lindsaynikole** have different average numbers of views. -->
 
 <!-- 8. Using the `t.test()` function, test the same hypothesis above. Interpret its output in detail. -->
-
-<!-- ## Problem 3: Writing Functions -->
-
-<!-- 1. Write a function to convert pounds to kilograms. -->
-
-<!-- 2. Write a function to convert pounds to kilograms, or kilograms to pounds. -->
-
-<!-- 3. Write a function to convert any of pounds, kilograms, stone, or gram to any of the other units. Start by thinking about what arguments your function should take. There should be 3. -->
-
-
 
 
 **End of HW1.** Make sure to submit both your .qmd file and output, either as a self-contained HTML or PDF file (this file, as well as the starter template at [https://github.com/recap-org/template-r-small](https://github.com/recap-org/template-r-small) are set up to output self-contained HTML files). And if you need help, remember the rule: if you can't figure out a coding issue after spending 30 minutes and Googling, EMAIL US.
