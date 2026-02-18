@@ -34,11 +34,7 @@ address the following questions.
     variables using ggplot, and interpret those results relative to the
     reference group.
 
-3.  Pose a clear hypothesis of your own regarding the data and use
-    regression analysis with interaction effects to test that
-    hypothesis. Present the results as a table using `modelsummary`.
-    Interpret and explain the coefficients, including the interaction
-    coefficient.
+<!-- 3. Pose a clear hypothesis of your own regarding the data and use regression analysis with interaction effects to test that hypothesis. Present the results as a table using `modelsummary`. Interpret and explain the coefficients, including the interaction coefficient. -->
 
 ## Problem 2: Tidyverse
 

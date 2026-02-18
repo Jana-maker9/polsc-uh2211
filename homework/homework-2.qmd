@@ -13,7 +13,7 @@ Load the test scores dataset [homework-2-scores.csv](../../data/homework-2-score
 
 2. Run a linear regression to explore the relationship between kindergarten reading score and ethnicity. Present the results as a table using `modelsummary`. Plot the coefficients on the ethnicity variables using ggplot, and interpret those results relative to the reference group.
 
-3. Pose a clear hypothesis of your own regarding the data and use regression analysis with interaction effects to test that hypothesis. Present the results as a table using `modelsummary`. Interpret and explain the coefficients, including the interaction coefficient.
+<!-- 3. Pose a clear hypothesis of your own regarding the data and use regression analysis with interaction effects to test that hypothesis. Present the results as a table using `modelsummary`. Interpret and explain the coefficients, including the interaction coefficient. -->
 
 ## Problem 2: Tidyverse
 
