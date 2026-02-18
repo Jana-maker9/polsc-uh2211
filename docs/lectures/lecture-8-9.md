@@ -2,48 +2,31 @@
 Romain Ferrali
 
 ``` r
-library(tidyverse)
-```
-
-    ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ✔ dplyr     1.1.4     ✔ readr     2.1.6
-    ✔ forcats   1.0.1     ✔ stringr   1.6.0
-    ✔ ggplot2   4.0.1     ✔ tibble    3.3.1
-    ✔ lubridate 1.9.4     ✔ tidyr     1.3.2
-    ✔ purrr     1.2.1     
-    ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ✖ dplyr::filter() masks stats::filter()
-    ✖ dplyr::lag()    masks stats::lag()
-    ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
-
-``` r
+suppressPackageStartupMessages(library(tidyverse))
 library(modelsummary)
 library(broom)
 library(marginaleffects)
 # library(knitr) # we will use only one function from this package, so we can load it separately
-df <- read_csv("./data/lecture-7-gss.csv")
+df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE)
 ```
-
-    Rows: 3544 Columns: 9
-    ── Column specification ────────────────────────────────────────────────────────
-    Delimiter: ","
-    chr (6): age, educ, sex, race, rincome, ballot
-    dbl (3): year, id_, rheight
-
-    ℹ Use `spec()` to retrieve the full column specification for this data.
-    ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
 df <- df |>
   mutate(
+    # trun sex into a binary variable that = 1 for female,
+    # 0 for male, NA for everything else
     female = case_match(
       sex,
       "FEMALE" ~ 1,
       "MALE" ~ 0,
       .default = NA
     ),
+    # remove negative values from height, and convert from inches to cm
     height = ifelse(rheight < 0, NA, rheight),
     height = height * 2.54,
+    # turn income bins into a numeric variable by taking the midpoint of each bin
+    # for the top bin, we assign it a value of 25000
+    # for the bottom bin, we assign it a value of 1000
     income = case_match(
       rincome,
       "$25000 OR MORE" ~ 25000,
@@ -60,7 +43,11 @@ df <- df |>
       "LT $1000" ~ 1000,
       .default = NA
     ),
-    race = ifelse(!race %in% c("Black", "White", "Other"), NA, race),
+    # race: we keep only the three meaningful categories,
+    # and set the rest (missing race, ...) to NA
+    race = ifelse(race %in% c("Black", "White", "Other"), race, NA),
+    # turn education categories into a numeric variables
+    # (i.e., years of education)
     edu = case_match(
       educ,
       "No formal schooling" ~ 0,
@@ -86,7 +73,11 @@ df <- df |>
       "8 or more years of college" ~ 20,
       .default = NA
     ),
+    # age: we set the top bin to 89, and convert to numeric
     age = ifelse(age == "89 or older", 89, age),
+    # converting to numeric will turn "missing" into an NA automatically
+    # R will give us a warning when doing this
+    # we can ignore the warning, because we actually want the "missing" values to be turned into NAs
     age = as.numeric(age)
   ) |>
   select(age, female, height, income, edu, race)
@@ -128,20 +119,814 @@ it a coefficient of 0, and the $R^2$ won’t change. Example:
 
 ``` r
 df_mini <- df |> select(height, income, female) |> na.omit()
+
+model_1 <- lm(income ~ height, data = df_mini)
+model_2 <- lm(income ~ height + female, data = df_mini)
+
+# access the R-squared values from the model summaries
+summary(model_1)$r.squared # r squared for model 1
 ```
+
+    [1] 0.02486121
+
+``` r
+summary(model_2)$r.squared # r squared for model 2; it is higher than model 1
+```
+
+    [1] 0.02513987
 
 To adjust for that, we can use the adjusted $R^2$, which penalizes the
 addition of variables to the model. Most people don’t care much about
 the adjusted $R^2$.
 
-## Making tables with `modelsummary`
+## Making tables
+
+The function `kable` from the `knitr` package is a simple way to create
+tables in R. It takes a data frame as input and returns a formatted
+table. Typically, `kable` is the only function you’ll be using from the
+`knitr` package, so you can load it directly without loading the entire
+package, using notation `knitr::kable()`.
 
 ``` r
-#|label: basic-tables
+# you can use kable to create a simple table from a data frame
+# you can use block options to add a caption to the table.
+# Specifically, the option tbl-cap adds a caption to the table
+knitr::kable(head(df))
 ```
+
+| age | female | height | income | edu | race  |
+|----:|-------:|-------:|-------:|----:|:------|
+|  72 |      1 | 162.56 |  25000 |  16 | White |
+|  80 |      0 |     NA |     NA |  18 | White |
+|  57 |      1 | 160.02 |  25000 |  12 | White |
+|  23 |      1 |     NA |   5500 |  16 | White |
+|  62 |      0 | 180.34 |     NA |  14 | White |
+|  27 |      0 | 182.88 |  25000 |  12 | White |
+
+Basic table
+
+The function `modelsummary` from the `modelsummary` package is a
+powerful way to create regression tables in R. It takes a list of models
+as input and returns a formatted table with the coefficients, standard
+errors, and other statistics for each model. You can customize the table
+using various options, such as adding stars to indicate statistical
+significance.
+
+``` r
+modelsummary(
+  list(model_1, model_2),
+  stars = TRUE
+)
+```
+
+<table style="width:56%;">
+<caption>Our first regression table</caption>
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 18%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th><ol type="1">
+<li></li>
+</ol></th>
+<th><ol start="2" type="1">
+<li></li>
+</ol></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(Intercept)</td>
+<td>3097.962</td>
+<td>5092.063</td>
+</tr>
+<tr>
+<td></td>
+<td>(4568.906)</td>
+<td>(6586.097)</td>
+</tr>
+<tr>
+<td>height</td>
+<td>106.075***</td>
+<td>95.367**</td>
+</tr>
+<tr>
+<td></td>
+<td>(26.680)</td>
+<td>(36.889)</td>
+</tr>
+<tr>
+<td>female</td>
+<td></td>
+<td>-324.489</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>(771.424)</td>
+</tr>
+<tr>
+<td>Num.Obs.</td>
+<td>622</td>
+<td>622</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>0.025</td>
+<td>0.025</td>
+</tr>
+<tr>
+<td>R2 Adj.</td>
+<td>0.023</td>
+<td>0.022</td>
+</tr>
+<tr>
+<td>AIC</td>
+<td>12775.5</td>
+<td>12777.3</td>
+</tr>
+<tr>
+<td>BIC</td>
+<td>12788.8</td>
+<td>12795.0</td>
+</tr>
+<tr>
+<td>Log.Lik.</td>
+<td>-6384.732</td>
+<td>-6384.643</td>
+</tr>
+<tr>
+<td>RMSE</td>
+<td>6945.88</td>
+<td>6944.89</td>
+</tr>
+</tbody><tfoot>
+<tr>
+<td colspan="3"><ul>
+<li>p &lt; 0.1, * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</li>
+</ul></td>
+</tr>
+</tfoot>
+&#10;</table>
+
+``` r
+modelsummary(
+  list(
+    # you can give custom names to the models by using a named list
+    # notice how I use backticks to allow for spaces in the model names
+    `Baseline model` = model_1,
+    `Larger model` = model_2
+  ),
+  stars = TRUE,
+  # you can tweak the statistics that are displayed in the table using the gof_map argument
+  # here, we only display the number of observations (nobs) and the R-squared (r.squared)
+  gof_map = c("nobs", "r.squared")
+)
+```
+
+<table style="width:64%;">
+<caption>A better regression table</caption>
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 23%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th>Baseline model</th>
+<th>Larger model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(Intercept)</td>
+<td>3097.962</td>
+<td>5092.063</td>
+</tr>
+<tr>
+<td></td>
+<td>(4568.906)</td>
+<td>(6586.097)</td>
+</tr>
+<tr>
+<td>height</td>
+<td>106.075***</td>
+<td>95.367**</td>
+</tr>
+<tr>
+<td></td>
+<td>(26.680)</td>
+<td>(36.889)</td>
+</tr>
+<tr>
+<td>female</td>
+<td></td>
+<td>-324.489</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>(771.424)</td>
+</tr>
+<tr>
+<td>Num.Obs.</td>
+<td>622</td>
+<td>622</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>0.025</td>
+<td>0.025</td>
+</tr>
+</tbody><tfoot>
+<tr>
+<td colspan="3"><ul>
+<li>p &lt; 0.1, * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</li>
+</ul></td>
+</tr>
+</tfoot>
+&#10;</table>
 
 ## Categorical variables
 
+Let’s try and get a sense of how race affects income. Notice that race
+is a **categorical variable**: there are three “categories” (White,
+Black, Other). Regression only uses numeric variables, so we need to
+convert the race variabble into a numeric variable. To do that, we will
+expand the idea of a binary variable that we used for the female
+variable.
+
+### Binary variables, take 2
+
+A binary variable, also called a dummy variable, is a variable that
+takes the value of 0 or 1. Last time, we ran the following regression:
+
+$$
+y_i = \alpha_1 + \beta_1 \text{female}_i + \epsilon_i
+$$
+
+We chose to assign the value 1 to female and 0 to male. This means that
+
+- $\alpha_1$ is the average income for males
+- $\beta_1$ is the difference in average income between females and
+  males
+- $\alpha_1 + \beta_1$ is the average income for females
+
+We could have done the opposite, and assigned the value 1 to male and 0
+to female. In that case, we would have had
+
+$$
+y_i = \alpha_2 + \beta_2 \text{male}_i + \epsilon_i
+$$
+
+In this case, we would have had:
+
+- $\alpha_2$ is the average income for females
+- $\beta_2$ is the difference in average income between males and
+  females
+- $\alpha_2 + \beta_2$ is the average income for males
+
+Notice that the two models are equivalent. In other words, we get the
+same predicted values for each observation, and the same $R^2$ value.
+The only thing that changes is the interpretation of the coefficients.
+Specifically, we have:
+
+- $\alpha_1 = \alpha_2 + \beta_2$: the average income for males
+- $\alpha_2 = \alpha_1 + \beta_1$: the average income for females
+
+What we really did, really was to change the **reference category** of
+our binary variable. In the first model, the reference category is male,
+because we assigned it the value 0. In other words, we get the effect of
+being female **relative to the reference** of being male.
+
+## More than two categories
+
+When we have a categorical variable with more than two categories, we
+can use the same idea to create multiple dummy variables. We can turn
+our race variable into two dummy variables: one for Black and one for
+Other. The regression model will look like this:
+
+$$
+y_i = \alpha + \beta_1 \text{Black}_i + \beta_2 \text{Other}_i + \epsilon_i
+$$
+
+Why didn’t we create a dummy variable for White? Because we need to
+choose a reference category, and we will choose White as the reference
+category. In this model, we have:
+
+- $\alpha$ is the average income for White people
+- $\beta_1$ is the difference in average income between Black and White
+  people
+- $\beta_2$ is the difference in average income between Other and White
+  people
+- $\alpha + \beta_1$ is the average income for Black
+- $\alpha + \beta_2$ is the average income for Other
+
+If we had added a dummy variable for White, we would have run into a
+problem. Look at this wrong model:
+
+$$
+y_i = \alpha + \beta_1 \text{Black}_i + \beta_2 \text{Other}_i + \beta_3 \text{White}_i + \epsilon_i
+$$
+
+The problem here is that it is unclear what the intercept $\alpha$
+represents: there is some confusion between $\beta_3$ and $\alpha$. If
+we run a regression with this model, R will complain.
+
+Just like with the binary variable, we could have chosen a different
+reference category. For example, we could have chosen Black as the
+reference category, and created dummy variables for White and Other. In
+that case, the model would look like this:
+
+$$
+y_i = \tilde{\alpha} + \tilde{\beta}_1 \text{White}_i + \tilde{\beta}_2 \text{Other}_i + \tilde{\epsilon}_i
+$$
+
+In this model, we have:
+
+- $\tilde{\alpha}$ is the average income for Black people
+- $\tilde{\beta}_1$ is the difference in average income between White
+  and Black people
+- $\tilde{\beta}_2$ is the difference in average income between Other
+  and Black people
+- $\tilde{\alpha} + \tilde{\beta}_1$ is the average income for White
+- $\tilde{\alpha} + \tilde{\beta}_2$ is the average income for Other
+
+Again, just like with the binary variable, the two models are
+equivalent. We get the same predicted values for each observation, and
+the same $R^2$ value. The only thing that changes is the interpretation
+of the coefficients. Specifically, we have:
+
+- $\alpha = \tilde{\alpha} + \tilde{\beta}_1$: the average income for
+  White people
+- $\tilde{\alpha} = \alpha + \beta_1$: the average income for Black
+  people
+- $\tilde{\alpha} + \tilde{\beta}_2 = \alpha + \beta_2$: the average
+  income for Other people
+
+## Categorical variables in R
+
+Now, let’s do this in R. The function `lm` will automatically create
+dummy variables for us when we include a categorical variable in the
+model. By default, R will choose the reference category as the one that
+comes first alphabetically. In our case, that is Black. So, when we run
+the following regression, R will automatically create dummy variables
+for Other and White, and use Black as the reference category.
+
+``` r
+mod_race <- lm(income ~ race, data = df)
+modelsummary(list(mod_race), stars = TRUE)
+```
+
+<table style="width:40%;">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th><ol type="1">
+<li></li>
+</ol></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(Intercept)</td>
+<td>20706.376***</td>
+</tr>
+<tr>
+<td></td>
+<td>(387.380)</td>
+</tr>
+<tr>
+<td>raceOther</td>
+<td>116.409</td>
+</tr>
+<tr>
+<td></td>
+<td>(582.023)</td>
+</tr>
+<tr>
+<td>raceWhite</td>
+<td>1145.952**</td>
+</tr>
+<tr>
+<td></td>
+<td>(425.605)</td>
+</tr>
+<tr>
+<td>Num.Obs.</td>
+<td>1974</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>0.005</td>
+</tr>
+<tr>
+<td>R2 Adj.</td>
+<td>0.004</td>
+</tr>
+<tr>
+<td>AIC</td>
+<td>40380.8</td>
+</tr>
+<tr>
+<td>BIC</td>
+<td>40403.1</td>
+</tr>
+<tr>
+<td>Log.Lik.</td>
+<td>-20186.384</td>
+</tr>
+<tr>
+<td>RMSE</td>
+<td>6682.14</td>
+</tr>
+</tbody><tfoot>
+<tr>
+<td colspan="2"><ul>
+<li>p &lt; 0.1, * p &lt; 0.05, <strong> p &lt; 0.01, </strong>* p &lt;
+0.001</li>
+</ul></td>
+</tr>
+</tfoot>
+&#10;</table>
+
+This is a little awkward to interpret, because there is a natural
+grouping between Other and Black. So we probably want to choose White as
+the reference category. It turns out R has a data type that is
+specifically designed for categorical variables, called a `factor`. A
+factor has `levels`, which are ordered. The first level is the reference
+category. We can convert our character variable `race` into a factor
+variable, and specify the reference category using the `fct_relevel`
+function.
+
+``` r
+df <- df |>
+  mutate(
+    # convert race from a character variable to a factor variable
+    race = as_factor(race)
+  )
+# check the levels of the factor variable
+# the first level is the reference category
+# it is the one that comes first alphabetically, which is "Black"
+levels(df$race)
+```
+
+    [1] "White" "Other" "Black"
+
+``` r
+# change the reference category to "White"
+df <- df |>
+  mutate(
+    race = fct_relevel(race, "White")
+  )
+
+# now, our regression model will use White as the reference category
+mod_race <- lm(income ~ race, data = df)
+modelsummary(list(mod_race), stars = TRUE)
+```
+
+<table style="width:40%;">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th><ol type="1">
+<li></li>
+</ol></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(Intercept)</td>
+<td>21852.328***</td>
+</tr>
+<tr>
+<td></td>
+<td>(176.285)</td>
+</tr>
+<tr>
+<td>raceOther</td>
+<td>-1029.543*</td>
+</tr>
+<tr>
+<td></td>
+<td>(468.790)</td>
+</tr>
+<tr>
+<td>raceBlack</td>
+<td>-1145.952**</td>
+</tr>
+<tr>
+<td></td>
+<td>(425.605)</td>
+</tr>
+<tr>
+<td>Num.Obs.</td>
+<td>1974</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>0.005</td>
+</tr>
+<tr>
+<td>R2 Adj.</td>
+<td>0.004</td>
+</tr>
+<tr>
+<td>AIC</td>
+<td>40380.8</td>
+</tr>
+<tr>
+<td>BIC</td>
+<td>40403.1</td>
+</tr>
+<tr>
+<td>Log.Lik.</td>
+<td>-20186.384</td>
+</tr>
+<tr>
+<td>RMSE</td>
+<td>6682.14</td>
+</tr>
+</tbody><tfoot>
+<tr>
+<td colspan="2"><ul>
+<li>p &lt; 0.1, * p &lt; 0.05, <strong> p &lt; 0.01, </strong>* p &lt;
+0.001</li>
+</ul></td>
+</tr>
+</tfoot>
+&#10;</table>
+
+We can visualize the coefficients of the model using a coefficient plot.
+A coefficient plot is a plot of the coefficients, with error bars
+representing the confidence intervals.
+
+``` r
+# the function broom::tidy() takes a model object and
+# returns a data frame with the coefficients, standard errors, and confidence intervals
+# for each term in the model. We can use this data frame to create a coefficient plot using ggplot2.
+tidy(mod_race, conf.int = TRUE) |>
+  # we remove the intercept, because it represents the average income for the reference category
+  # this is very different from the other parameters, which represent
+  # differences in average income between the reference category and the other categories
+  filter(term != "(Intercept)") |>
+  ggplot(aes(x = term, y = estimate)) +
+  geom_point() +
+  # let's add a dashed line at 0, to make it easier to see which coefficients are statistically significant
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  # format the y-axis labels as monetary values
+  scale_y_continuous(labels = scales::dollar) +
+  # let's invert the axes, to take advantage of the horizontal space we have when writing papers
+  coord_flip() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  labs(
+    x = "Race",
+    y = "Difference in average income (relative to White)"
+  )
+```
+
+![](lecture-8-9_files/figure-commonmark/coef-plot-1.png)
+
 ## Linear hypotheses
+
+So, we have estimated the following model:
+
+$$
+y_i = \alpha + \beta_1 \text{Black}_i + \beta_2 \text{Other}_i + \epsilon_i
+$$
+
+So far, we know that Black people and Other race people have an income
+that is significantly lower than White people, because the coefficients
+$\beta_1$ and $\beta_2$ are negative and statistically significant. But
+there are a few things we don’t know or would like to visualize.
+
+### Are Black people significantly poorer than Other race?
+
+The coefficient plot we just created only shows that the confidence
+intervals for Black and Other race parameters ($\beta_1$, $\beta_2$
+respectively) overlap with each other. So there is no significant
+difference between the two groups. But we can also test this hypothesis
+directly. We want to know whether $\beta_1 \neq \beta_2$. The null
+hypothesis is that $\beta_1 = \beta_2$, which is equivalent to saying
+that $\beta_1 - \beta_2 = 0$. It turns out that you can’t just add the
+p-values, or do the difference in confidence intervals. Instead, you
+need to test this new (linear) hypothesis separately. The `hypotheses`
+function from the `marginaleffects` package lets us do that.
+
+``` r
+hypotheses(mod_race, hypothesis = "raceOther - raceBlack = 0")
+```
+
+
+                Hypothesis Estimate Std. Error   z Pr(>|z|)   S 2.5 % 97.5 %
+     raceOther-raceBlack=0      116        582 0.2    0.841 0.2 -1024   1257
+
+``` r
+# the column Pr(>|z|) is the p-value. It is not significant, so we are confident that there is no significant difference between the two groups.
+# the columns 2.5% and 97.5% give the confidence interval for the difference between the two groups.
+```
+
+### What is the average income for each group?
+
+Our coefficient plot only shows the differences in average income
+between the reference category (White) and the other categories (Black,
+Other). It doesn’t show the average income for each group. We can
+calculate the average income for each group using the coefficients from
+the model. The average income for White people is given by the intercept
+$\alpha$. We can get the confidence interval directly using
+`broom::tidy()`. The average income for Black people is given by
+$\alpha + \beta_1$. That’s a linear hypothesis, so we can get the
+confidence interval using `marginaleffects::hypotheses()`.
+
+``` r
+# get te plot data:
+# a series of 1-row data frames, each containing the estimate and confidence interval for the average income of each group
+# we combine them with bind_rows() to get a single data frame that we can use for plotting
+pl <- bind_rows(
+  # get the average income for White people, which is given by the intercept parameter
+  tidy(mod_race, conf.int = TRUE) |>
+    filter(term == "(Intercept)") |>
+    # give it a more meaningful name, to make the plot easier to read
+    mutate(term = "White"),
+  # get the average income for Other race, which is given by the linear hypothesis (Intercept) + raceOther
+  hypotheses(mod_race, hypothesis = "`(Intercept)` + raceOther = 0") |>
+    mutate(term = "Other"),
+  hypotheses(mod_race, hypothesis = "`(Intercept)` + raceBlack = 0") |>
+    mutate(term = "Black")
+)
+
+# make the plot
+ggplot(aes(x = term, y = estimate), data = pl) +
+  geom_point() +
+  scale_y_continuous(labels = scales::dollar) +
+  coord_flip() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  labs(
+    x = "Race",
+    y = "Average income"
+  )
+```
+
+![](lecture-8-9_files/figure-commonmark/linear-hypotheses-1.png)
+
+``` r
+list(
+  Simple = mod_race,
+  `With edu` = lm(income ~ race + edu, data = df),
+  All = lm(income ~ race + female + edu + age, data = df)
+) |>
+  modelsummary(stars = TRUE)
+```
+
+<table style="width:82%;">
+<colgroup>
+<col style="width: 19%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th>Simple</th>
+<th>With edu</th>
+<th>All</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(Intercept)</td>
+<td>21852.328***</td>
+<td>13430.695***</td>
+<td>12520.978***</td>
+</tr>
+<tr>
+<td></td>
+<td>(176.285)</td>
+<td>(776.828)</td>
+<td>(884.922)</td>
+</tr>
+<tr>
+<td>raceOther</td>
+<td>-1029.543*</td>
+<td>-589.449</td>
+<td>-369.644</td>
+</tr>
+<tr>
+<td></td>
+<td>(468.790)</td>
+<td>(457.505)</td>
+<td>(464.014)</td>
+</tr>
+<tr>
+<td>raceBlack</td>
+<td>-1145.952**</td>
+<td>-817.531*</td>
+<td>-564.447</td>
+</tr>
+<tr>
+<td></td>
+<td>(425.605)</td>
+<td>(413.693)</td>
+<td>(419.662)</td>
+</tr>
+<tr>
+<td>edu</td>
+<td></td>
+<td>577.193***</td>
+<td>587.846***</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>(51.849)</td>
+<td>(52.281)</td>
+</tr>
+<tr>
+<td>female</td>
+<td></td>
+<td></td>
+<td>-1969.128***</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>(295.015)</td>
+</tr>
+<tr>
+<td>age</td>
+<td></td>
+<td></td>
+<td>37.519***</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td>(9.962)</td>
+</tr>
+<tr>
+<td>Num.Obs.</td>
+<td>1974</td>
+<td>1965</td>
+<td>1894</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>0.005</td>
+<td>0.064</td>
+<td>0.093</td>
+</tr>
+<tr>
+<td>R2 Adj.</td>
+<td>0.004</td>
+<td>0.063</td>
+<td>0.091</td>
+</tr>
+<tr>
+<td>AIC</td>
+<td>40380.8</td>
+<td>40067.6</td>
+<td>38572.4</td>
+</tr>
+<tr>
+<td>BIC</td>
+<td>40403.1</td>
+<td>40095.5</td>
+<td>38611.3</td>
+</tr>
+<tr>
+<td>Log.Lik.</td>
+<td>-20186.384</td>
+<td>-20028.803</td>
+<td>-19279.224</td>
+</tr>
+<tr>
+<td>RMSE</td>
+<td>6682.14</td>
+<td>6462.92</td>
+<td>6375.17</td>
+</tr>
+</tbody><tfoot>
+<tr>
+<td colspan="4"><ul>
+<li>p &lt; 0.1, * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</li>
+</ul></td>
+</tr>
+</tfoot>
+&#10;</table>
 
 ## Interaction terms
