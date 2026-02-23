@@ -1,0 +1,82 @@
+---
+title: "Lecture 10: String manipulation"
+---
+
+```{r}
+#| label: setup
+
+suppressPackageStartupMessages(library(tidyverse))
+df <- read_csv("./data/lecture-10-tweets.csv", show_col_types = FALSE)
+```
+
+```{r}
+#| label: data-overview
+
+df # a dataset about tweets, with information about the user who posted the tweet the content of the tweet
+
+table(df$topic)
+```
+
+# Main functions for working with strings
+
+- `grepl()`: returns a logical vector indicating whether a pattern is found in a string
+- `gsub()`: replaces all occurrences of a pattern in a string with a replacement
+- `substr()`: returns a substring of a string, given a starting and ending position
+- `nchar()`: returns the number of characters in a string
+- `sprintf()`: formats a string using a template and values
+- `paste()`: concatenates strings together, with a separator
+
+You can use other functions, such as `str_detect()` and `str_replace_all()` from the `stringr` package. I don't like them.
+
+An important thing to note is that these functions use **regular expressions**, which are a powerful way to specify patterns in strings. Regular expressions are a very strange language, but they are the very useful for working with strings. This is where AI shines. My recommendations are: 
+
+1. Use the main text functions (e.g., `grepl()`, `gsub()`) to do simple string manipulation tasks, such as checking if a string contains a certain word, or replacing a certain word with another word, **always** disabling regular expressions.
+2. Use specialized packages to work with specific types of strings, such as URLs, email addresses, etc. For example, the `lubridate` package is great for working with dates and times.
+3. Use AI to write functions that use regular expressions to do more complex string manipulation tasks. For example, you can ask AI to write a function that extracts the domain name from a URL, or that checks if a string is a valid email address. Make sure to test the function on a variety of inputs to ensure that it works correctly. In fact, you should provide these inputs as examples when asking AI to write the function, to make sure that it works correctly on those examples.
+
+# Simple string lookup task: find the mention tweets
+
+```{r}
+#| label: find-mention-tweets-simple
+
+# we want to find the tweets that mention other users.
+```
+
+```{r}
+#| label: find-mention-tweets-robust
+
+# we want to be robust to false positives
+```
+
+# Strings through other packages: working with dates
+
+We want to extract the year from the `date` variable. 
+
+## Approach 1: extract the year using string manipulation
+
+```{r}
+#| label: extract-year-simple
+
+```
+
+## Approach 2: extract the year using the lubridate package
+
+```{r}
+#| label: extract-year-lubridate
+
+parse_date_time(
+  head(df$date),
+  orders = "a b d H:M:S Y"
+)
+```
+
+## A nice plot: tweets over time
+
+# Making your own strings
+
+This is quite useful when you want to plot things and make labels look better.
+
+```{r}
+#| label: make-strings
+
+```
