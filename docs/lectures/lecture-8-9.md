@@ -781,152 +781,284 @@ ggplot(aes(x = term, y = estimate), data = pl) +
 
 ![](lecture-8-9_files/figure-commonmark/linear-hypotheses-1.png)
 
+## Interaction terms
+
+Now, let’s say we want to estimate returns to education. In other words,
+we want to know how much income increases for each additional year of
+education. We can estimate the following model:
+
+$$
+y_i = \alpha + \beta \text{edu}_i + \epsilon_i
+$$
+
 ``` r
-list(
-  Simple = mod_race,
-  `With edu` = lm(income ~ race + edu, data = df),
-  All = lm(income ~ race + female + edu + age, data = df)
-) |>
-  modelsummary(stars = TRUE)
+mod <- lm(income ~ edu, data = df)
+summary(mod)
 ```
 
-<table style="width:82%;">
+
+    Call:
+    lm(formula = income ~ edu, data = df)
+
+    Residuals:
+         Min       1Q   Median       3Q      Max 
+    -23856.4    143.6   2499.7   3677.7  10156.9 
+
+    Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+    (Intercept) 13076.05     755.72   17.30   <2e-16 ***
+    edu           589.02      51.37   11.46   <2e-16 ***
+    ---
+    Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+    Residual standard error: 6457 on 1979 degrees of freedom
+      (1563 observations deleted due to missingness)
+    Multiple R-squared:  0.06229,   Adjusted R-squared:  0.06181 
+    F-statistic: 131.5 on 1 and 1979 DF,  p-value: < 2.2e-16
+
+The model below shows that the returns to education are positive and
+statistically significant: one additional year of education increases
+income by about \$`round(coef(mod)["edu"]`.
+
+However, we might be interested in whether the returns to education are
+different for males and females. To answer that question, we can
+estimate two separate models; one for males and one for females.
+
+``` r
+models <- list(
+  males = lm(income ~ edu, data = df |> filter(female == 0)),
+  females = lm(income ~ edu, data = df |> filter(female == 1))
+)
+
+modelsummary(models, stars = TRUE)
+```
+
+<table style="width:60%;">
 <colgroup>
 <col style="width: 19%" />
 <col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 20%" />
+<col style="width: 19%" />
 </colgroup>
 <thead>
 <tr>
 <th></th>
-<th>Simple</th>
-<th>With edu</th>
-<th>All</th>
+<th>males</th>
+<th>females</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>(Intercept)</td>
-<td>21852.328***</td>
-<td>13430.695***</td>
-<td>12520.978***</td>
+<td>15828.903***</td>
+<td>9507.540***</td>
 </tr>
 <tr>
 <td></td>
-<td>(176.285)</td>
-<td>(776.828)</td>
-<td>(884.922)</td>
-</tr>
-<tr>
-<td>raceOther</td>
-<td>-1029.543*</td>
-<td>-589.449</td>
-<td>-369.644</td>
-</tr>
-<tr>
-<td></td>
-<td>(468.790)</td>
-<td>(457.505)</td>
-<td>(464.014)</td>
-</tr>
-<tr>
-<td>raceBlack</td>
-<td>-1145.952**</td>
-<td>-817.531*</td>
-<td>-564.447</td>
-</tr>
-<tr>
-<td></td>
-<td>(425.605)</td>
-<td>(413.693)</td>
-<td>(419.662)</td>
+<td>(916.671)</td>
+<td>(1187.427)</td>
 </tr>
 <tr>
 <td>edu</td>
-<td></td>
-<td>577.193***</td>
-<td>587.846***</td>
+<td>465.712***</td>
+<td>767.165***</td>
 </tr>
 <tr>
 <td></td>
-<td></td>
-<td>(51.849)</td>
-<td>(52.281)</td>
-</tr>
-<tr>
-<td>female</td>
-<td></td>
-<td></td>
-<td>-1969.128***</td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td>(295.015)</td>
-</tr>
-<tr>
-<td>age</td>
-<td></td>
-<td></td>
-<td>37.519***</td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td>(9.962)</td>
+<td>(63.131)</td>
+<td>(79.755)</td>
 </tr>
 <tr>
 <td>Num.Obs.</td>
-<td>1974</td>
-<td>1965</td>
-<td>1894</td>
+<td>971</td>
+<td>1009</td>
 </tr>
 <tr>
 <td>R2</td>
-<td>0.005</td>
-<td>0.064</td>
-<td>0.093</td>
+<td>0.053</td>
+<td>0.084</td>
 </tr>
 <tr>
 <td>R2 Adj.</td>
-<td>0.004</td>
-<td>0.063</td>
-<td>0.091</td>
+<td>0.052</td>
+<td>0.083</td>
 </tr>
 <tr>
 <td>AIC</td>
-<td>40380.8</td>
-<td>40067.6</td>
-<td>38572.4</td>
+<td>19538.8</td>
+<td>20732.2</td>
 </tr>
 <tr>
 <td>BIC</td>
-<td>40403.1</td>
-<td>40095.5</td>
-<td>38611.3</td>
+<td>19553.4</td>
+<td>20747.0</td>
 </tr>
 <tr>
 <td>Log.Lik.</td>
-<td>-20186.384</td>
-<td>-20028.803</td>
-<td>-19279.224</td>
+<td>-9766.375</td>
+<td>-10363.118</td>
 </tr>
 <tr>
 <td>RMSE</td>
-<td>6682.14</td>
-<td>6462.92</td>
-<td>6375.17</td>
+<td>5648.36</td>
+<td>6986.56</td>
 </tr>
 </tbody><tfoot>
 <tr>
-<td colspan="4"><ul>
+<td colspan="3"><ul>
 <li>p &lt; 0.1, * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</li>
 </ul></td>
 </tr>
 </tfoot>
 &#10;</table>
 
-## Interaction terms
+The returns to education seem higher for females than for males: one
+additional year of education increases income by about
+\$`round(coef(models[["males"]])["edu"])` for males, and
+\$`round(coef(models[["females"]])["edu"])` for females. But is this
+difference statistically significant? We can eyeball it by looking at
+the confidence intervals for the two coefficients.
+
+``` r
+models |>
+  map_dfr(broom::tidy, conf.int = TRUE, .id = "model") |>
+  filter(term == "edu") |>
+  ggplot(aes(x = model, y = estimate)) +
+  geom_point() +
+  scale_y_continuous(labels = scales::dollar) +
+  coord_flip() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  labs(
+    x = "Model",
+    y = "Returns to an additional year of education"
+  )
+```
+
+![](lecture-8-9_files/figure-commonmark/returns-to-education-confidence-intervals-1.png)
+
+We can also test the hypothesis that the returns to education are the
+same for males and females by running “two regressions in one”. We can
+do that by including an **interaction term** between education and
+gender. An interaction term is a variable that is created by multiplying
+two variables together. It extends the idea of categorical variables:
+instead of just having a different intercept for each group, we also
+have a different slope for each group. The model looks like this:
+
+$$
+y_i = \alpha + \beta_1 \text{edu}_i + \beta_2 \text{female}_i + \beta_3 \text{edu}_i \times \text{female}_i + \epsilon_i
+$$
+
+Why does this work? Let’s look at the model separately for males and
+females.
+
+For males, we have $\text{female}_i = 0$, so the model becomes
+$y_i = \alpha + \beta_1 \text{edu}_i + \beta_2 \times 0 + \beta_3 \text{edu}_i \times 0 + \epsilon_i$.
+This simplifies to $y_i = \alpha + \beta_1 \text{edu}_i + \epsilon_i$;
+that is, a line with intercept $\alpha$ and slope $\beta_1$. So the
+returns to education for males are given by $\beta_1$.
+
+For females, we have $\text{female}_i = 1$, so the model becomes
+$y_i = \alpha + \beta_1 \text{edu}_i + \beta_2 \times 1 + \beta_3 \text{edu}_i \times 1 + \epsilon_i$.
+This simplifies to
+$y_i = (\alpha + \beta_2) + (\beta_1 + \beta_3) \text{edu}_i + \epsilon_i$;
+that is, a line with intercept $\alpha + \beta_2$ and slope
+$\beta_1 + \beta_3$. So the returns to education for females are given
+by $\beta_1 + \beta_3$.
+
+Notice furthermore that $\beta_3$ is the difference in returns to
+education between females and males. We call
+$\text{edu}_i \times \text{female}_i$ the **interaction** term, because
+it captures the interaction between education and gender. We call
+$\text{edu}_i$ and $\text{female}_i$ the **main effects**, because they
+capture the main effects of education and gender on income,
+respectively.
+
+Now, let’s see how to estimate models with interaction terms in R.
+
+``` r
+# the simple way: create a new variable that is the product of education and female
+df <- df |> mutate(edu_female = edu * female)
+lm(income ~ edu + female + edu_female, data = df) |> summary()
+```
+
+
+    Call:
+    lm(formula = income ~ edu + female + edu_female, data = df)
+
+    Residuals:
+         Min       1Q   Median       3Q      Max 
+    -23850.8    149.2   2185.4   3582.6  11656.6 
+
+    Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+    (Intercept) 15828.90    1033.04  15.323  < 2e-16 ***
+    edu           465.71      71.15   6.546 7.52e-11 ***
+    female      -6321.36    1495.89  -4.226 2.49e-05 ***
+    edu_female    301.45     101.70   2.964  0.00307 ** 
+    ---
+    Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+    Residual standard error: 6372 on 1976 degrees of freedom
+      (1564 observations deleted due to missingness)
+    Multiple R-squared:  0.08797,   Adjusted R-squared:  0.08659 
+    F-statistic: 63.53 on 3 and 1976 DF,  p-value: < 2.2e-16
+
+``` r
+# the better way: use the : operator to create the interaction term automatically
+lm(income ~ edu + female + edu:female, data = df) |> summary()
+```
+
+
+    Call:
+    lm(formula = income ~ edu + female + edu:female, data = df)
+
+    Residuals:
+         Min       1Q   Median       3Q      Max 
+    -23850.8    149.2   2185.4   3582.6  11656.6 
+
+    Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+    (Intercept) 15828.90    1033.04  15.323  < 2e-16 ***
+    edu           465.71      71.15   6.546 7.52e-11 ***
+    female      -6321.36    1495.89  -4.226 2.49e-05 ***
+    edu:female    301.45     101.70   2.964  0.00307 ** 
+    ---
+    Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+    Residual standard error: 6372 on 1976 degrees of freedom
+      (1564 observations deleted due to missingness)
+    Multiple R-squared:  0.08797,   Adjusted R-squared:  0.08659 
+    F-statistic: 63.53 on 3 and 1976 DF,  p-value: < 2.2e-16
+
+``` r
+# the wizard's way: use the * operator to create
+# the interaction term and the main effects automatically
+# in other words, edu * female is expanded automatically
+# into edu + female + edu:female
+lm(income ~ edu * female, data = df) |> summary()
+```
+
+
+    Call:
+    lm(formula = income ~ edu * female, data = df)
+
+    Residuals:
+         Min       1Q   Median       3Q      Max 
+    -23850.8    149.2   2185.4   3582.6  11656.6 
+
+    Coefficients:
+                Estimate Std. Error t value Pr(>|t|)    
+    (Intercept) 15828.90    1033.04  15.323  < 2e-16 ***
+    edu           465.71      71.15   6.546 7.52e-11 ***
+    female      -6321.36    1495.89  -4.226 2.49e-05 ***
+    edu:female    301.45     101.70   2.964  0.00307 ** 
+    ---
+    Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+    Residual standard error: 6372 on 1976 degrees of freedom
+      (1564 observations deleted due to missingness)
+    Multiple R-squared:  0.08797,   Adjusted R-squared:  0.08659 
+    F-statistic: 63.53 on 3 and 1976 DF,  p-value: < 2.2e-16
+
+We notice that the coefficient on `edu:female` is positive and
+statistically significant, which means that the returns to education are
+higher for females than for males.

@@ -371,8 +371,84 @@ ggplot(aes(x = term, y = estimate), data = pl) +
 
 ## Interaction terms
 
+Now, let's say we want to estimate returns to education. In other words, we want to know how much income increases for each additional year of education. We can estimate the following model:
+
+$$
+y_i = \alpha + \beta \text{edu}_i + \epsilon_i
+$$
+
 ```{r}
-#| label: interaction-terms
+#| label: returns-to-education
+
+mod <- lm(income ~ edu, data = df)
+summary(mod)
 ```
 
+The model below shows that the returns to education are positive and statistically significant: one additional year of education increases income by about $`round(coef(mod)["edu"]`.
 
+However, we might be interested in whether the returns to education are different for males and females. To answer that question, we can estimate two separate models; one for males and one for females. 
+
+```{r}
+#| label: returns-to-education-by-gender
+
+models <- list(
+  males = lm(income ~ edu, data = df |> filter(female == 0)),
+  females = lm(income ~ edu, data = df |> filter(female == 1))
+)
+
+modelsummary(models, stars = TRUE)
+```
+
+The returns to education seem higher for females than for males: one additional year of education increases income by about $`round(coef(models[["males"]])["edu"])` for males, and $`round(coef(models[["females"]])["edu"])` for females. But is this difference statistically significant? We can eyeball it by looking at the confidence intervals for the two coefficients. 
+
+```{r}
+#| label: returns-to-education-confidence-intervals
+
+models |>
+  map_dfr(broom::tidy, conf.int = TRUE, .id = "model") |>
+  filter(term == "edu") |>
+  ggplot(aes(x = model, y = estimate)) +
+  geom_point() +
+  scale_y_continuous(labels = scales::dollar) +
+  coord_flip() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  labs(
+    x = "Model",
+    y = "Returns to an additional year of education"
+  )
+```
+
+We can also test the hypothesis that the returns to education are the same for males and females by running "two regressions in one". We can do that by including an **interaction term** between education and gender. An interaction term is a variable that is created by multiplying two variables together. It extends the idea of categorical variables: instead of just having a different intercept for each group, we also have a different slope for each group. The model looks like this:
+
+$$
+y_i = \alpha + \beta_1 \text{edu}_i + \beta_2 \text{female}_i + \beta_3 \text{edu}_i \times \text{female}_i + \epsilon_i
+$$
+
+Why does this work? Let's look at the model separately for males and females.
+
+For males, we have $\text{female}_i = 0$, so the model becomes $y_i = \alpha + \beta_1 \text{edu}_i + \beta_2 \times 0 + \beta_3 \text{edu}_i \times 0 + \epsilon_i$. This simplifies to $y_i = \alpha + \beta_1 \text{edu}_i + \epsilon_i$; that is, a line with intercept $\alpha$ and slope $\beta_1$. So the returns to education for males are given by $\beta_1$. 
+
+For females, we have $\text{female}_i = 1$, so the model becomes $y_i = \alpha + \beta_1 \text{edu}_i + \beta_2 \times 1 + \beta_3 \text{edu}_i \times 1 + \epsilon_i$. This simplifies to $y_i = (\alpha + \beta_2) + (\beta_1 + \beta_3) \text{edu}_i + \epsilon_i$; that is, a line with intercept $\alpha + \beta_2$ and slope $\beta_1 + \beta_3$. So the returns to education for females are given by $\beta_1 + \beta_3$. 
+
+Notice furthermore that $\beta_3$ is the difference in returns to education between females and males. We call $\text{edu}_i \times \text{female}_i$ the **interaction** term, because it captures the interaction between education and gender. We call $\text{edu}_i$ and $\text{female}_i$ the **main effects**, because they capture the main effects of education and gender on income, respectively.
+
+Now, let's see how to estimate models with interaction terms in R.
+
+```{r}
+#| label: interaction-terms
+
+# the simple way: create a new variable that is the product of education and female
+df <- df |> mutate(edu_female = edu * female)
+lm(income ~ edu + female + edu_female, data = df) |> summary()
+
+# the better way: use the : operator to create the interaction term automatically
+lm(income ~ edu + female + edu:female, data = df) |> summary()
+
+# the wizard's way: use the * operator to create
+# the interaction term and the main effects automatically
+# in other words, edu * female is expanded automatically
+# into edu + female + edu:female
+lm(income ~ edu * female, data = df) |> summary()
+```
+
+We notice that the coefficient on `edu:female` is positive and statistically significant, which means that the returns to education are higher for females than for males. 
