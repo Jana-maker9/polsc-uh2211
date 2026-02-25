@@ -1,20 +1,53 @@
+#' Clean GSS survey data
+#'
+#' Cleans and derives commonly used variables from a General Social Survey (GSS) dataset.
+#'
+#' This function performs the following transformations:
+#' - Creates a binary "female" indicator: 1 for "FEMALE", 0 for "MALE", NA otherwise.
+#' - Cleans "rheight": removes negative values (set to NA) and converts inches to centimeters.
+#' - Converts income category "rincome" to numeric midpoints; assigns 25000 to top bin and 1000 to bottom bin.
+#' - Keeps only "Black", "White", and "Other" values in "race"; all other values set to NA.
+#' - Maps educational categories "educ" to approximate years of education.
+#' - Converts age to numeric, setting "89 or older" to 89; non‑numeric or missing values become NA.
+#'
+#' @param df A data.frame or tibble containing GSS variables. Required columns:
+#'   - sex: character/factor with values like "FEMALE", "MALE".
+#'   - rheight: numeric recorded height in inches (negative values treated as missing).
+#'   - rincome: income category as character/factor (e.g., "$25000 OR MORE", "LT $1000").
+#'   - race: character/factor with race categories.
+#'   - educ: character/factor describing education categories.
+#'   - age: character/factor or numeric; may contain "89 or older".
+#'
+#' @return A tibble/data.frame with the original columns plus derived/cleaned variables:
+#'   - female: integer (1 = female, 0 = male, NA = other/missing).
+#'   - height: numeric height in centimeters (NA for invalid/negative input).
+#'   - income: numeric estimated income (midpoint of bin, NA if unknown).
+#'   - race: character with only "Black", "White", or "Other" preserved; other values set to NA.
+#'   - edu: numeric years of education (NA if educ was missing/unrecognized).
+#'   - age: numeric age with "89 or older" coerced to 89; non‑numeric values become NA.
+#'
+#' @details
+#' The function intentionally coerces certain character "missing" indicators to NA when converting
+#' variables to numeric; R will emit a warning during coercion which can be safely ignored.
+#'
+#' @examples
+#' # Example usage:
+#' # cleaned <- clean_gss(gss_df)
+#' # dplyr::glimpse(cleaned)
+#'
+#' @export
+
 clean_gss <- function(df) {
   df |>
     mutate(
-      # trun sex into a binary variable that = 1 for female,
-      # 0 for male, NA for everything else
       female = case_match(
         sex,
         "FEMALE" ~ 1,
         "MALE" ~ 0,
         .default = NA
       ),
-      # remove negative values from height, and convert from inches to cm
       height = ifelse(rheight < 0, NA, rheight),
       height = height * 2.54,
-      # turn income bins into a numeric variable by taking the midpoint of each bin
-      # for the top bin, we assign it a value of 25000
-      # for the bottom bin, we assign it a value of 1000
       income = case_match(
         rincome,
         "$25000 OR MORE" ~ 25000,
@@ -31,11 +64,7 @@ clean_gss <- function(df) {
         "LT $1000" ~ 1000,
         .default = NA
       ),
-      # race: we keep only the three meaningful categories,
-      # and set the rest (missing race, ...) to NA
       race = ifelse(race %in% c("Black", "White", "Other"), race, NA),
-      # turn education categories into a numeric variables
-      # (i.e., years of education)
       edu = case_match(
         educ,
         "No formal schooling" ~ 0,
@@ -61,11 +90,7 @@ clean_gss <- function(df) {
         "8 or more years of college" ~ 20,
         .default = NA
       ),
-      # age: we set the top bin to 89, and convert to numeric
       age = ifelse(age == "89 or older", 89, age),
-      # converting to numeric will turn "missing" into an NA automatically
-      # R will give us a warning when doing this
-      # we can ignore the warning, because we actually want the "missing" values to be turned into NAs
       age = as.numeric(age)
     )
 }

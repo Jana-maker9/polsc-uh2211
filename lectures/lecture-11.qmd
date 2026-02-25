@@ -6,6 +6,9 @@ title: "Lecture 11: Non-linear regression"
 #| label: setup
 
 suppressPackageStartupMessages(library(tidyverse))
+library(modelsummary)
+# outsource the (boring) data cleaning code to a separate file
+# the source() function runs everything that's in that file
 source("./lectures/helpers.R")
 df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE) |>
   clean_gss()
@@ -14,6 +17,19 @@ df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE) |>
 # Non-linear regression
 
 Sometimes, the relationship between the independent variable(s) and the dependent variable is not linear. In these cases, we can use non-linear regression to model the relationship. There is a well-known non-linear relationship: age and income. Income tends to increase with age, but it tends to decrease after a certain age (e.g., after retirement). This is a non-linear relationship, because the relationship between age and income is not a straight line.
+
+```{r}
+#| label: a non-linear relationship
+
+ggplot(df, aes(x = age, y = income)) +
+  geom_jitter(height = 2500, alpha = .3) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    x = "Age",
+    y = "Income",
+    caption = "The figure hints at a non-linear relationship between age and income."
+  )
+```
 
 There are two ways to model non-linear relationships:
 
@@ -24,16 +40,159 @@ There are two ways to model non-linear relationships:
 
 The idea of local regression is to split the data into bins, and then fit a linear regression to each bin. This allows us to capture non-linear relationships, because we're fitting a different linear regression to each bin. The most common way to do this is to use a method called LOESS (locally estimated scatterplot smoothing). 
 
-Let's do this by hand first, then we'll see how to do it with `ggplot2`.
+```{r}
+#| label: loess
+
+#| label: a non-linear relationship
+
+ggplot(df, aes(x = age, y = income)) +
+  geom_jitter(height = 2500, alpha = .3) +
+  scale_y_continuous(labels = scales::dollar) +
+  # we've used geom_smooth() before, with method = "lm"
+  # to fit a linear regression line to the data
+  # now, we use the default method, which is "loess", to fit a non-linear regression
+  geom_smooth() +
+  labs(
+    x = "Age",
+    y = "Income"
+  )
+```
+
+Our LOESS fit confirms that the relationship is non-linear. Notice how it plateaus between ages 28 and 60. This is because our data is top-coded: the maximum reported income is $25,000, which is not a lot for people in their 30s, 40s, and 50s. This is a problem with the data, not with the LOESS fit. The LOESS fit is doing its job: it's fitting a non-linear regression to the data, and it's showing us that the relationship between age and income is non-linear.
+
+We can use the information from the LOESS fit to split the data into bins, and then fit a linear regression to each bin. For example, we can split the data into three bins: "Young" (age <= 28), "Middle-Aged" (28 < age <= 60), and "Old" (age > 60). Then, we can fit a linear regression to each bin, and compare the coefficients of the linear regressions across the bins. In essence, this is what the LOESS fit is doing, except that, unlike us, it picks the bins in a data-driven way, rather than using arbitrary cutoffs (e.g., 28 and 60). 
+
+```{r}
+#| label: local-regression
+
+binned_regressions <- list(
+  Young = lm(income ~ age, data = df |> filter(age <= 28)),
+  `Middle-Aged` = lm(income ~ age, data = df |> filter(age > 28, age <= 60)),
+  Old = lm(income ~ age, data = df |> filter(age > 60))
+)
+
+modelsummary(binned_regressions, stars = T)
+```
+
+We can also use those same regressions to create a plot of the fitted lines for each bin. This is a nice way to visualize the non-linear relationship between age and income. Let's compare it to the LOESS fit.
+
+```{r}
+#| label: local-regression-plot
+
+# create a new dataset for plotting the fitted lines from the binned regressions
+# we will add predicted income to this dataset, using the predict() function
+pl <- tibble(
+  age = seq(18, 89, by = .1)
+)
+# get predicted income, feeding each subset of the data to the corresponding regression
+pl$income <- c(
+  predict(
+    binned_regressions$Young,
+    newdata = pl |> filter(age <= 28)
+  ),
+  predict(
+    binned_regressions$`Middle-Aged`,
+    newdata = pl |> filter(age > 28, age <= 60)
+  ),
+  predict(binned_regressions$Old, newdata = pl |> filter(age > 60))
+)
+
+ggplot(df, aes(x = age, y = income)) +
+  geom_jitter(height = 2500, alpha = .3) +
+  scale_y_continuous(labels = scales::dollar) +
+  geom_smooth() +
+  # notice how we feed different data to geom_line():
+  # the main plot uses df (the original data)
+  # but the line uses pl, which contains the predicted income from the binned regressions
+  geom_line(data = pl, color = "red") +
+  labs(
+    x = "Age",
+    y = "Income",
+    caption = "The red line is the fitted line from the local regression."
+  )
+```
 
 # Transforming the data
+
+## In a nutshell
 
 There are two common tricks: 
 
 1. Transform the independent variable(s) using a non-linear function; typically, a polynomial function (e.g., age^2).
 2. Transform the dependent variable using a non-linear function; typically, a logarithmic function (e.g., log(income)). This is especially common for data such as income, which tends to be right-skewed (i.e., there are a few very high values that can distort the relationship between the independent variable(s) and the dependent variable). By taking the logarithm of income, we can reduce the skewness and make the relationship more linear. The log trick for the dependent variable can also be used for independent variables (again, when the independent variable is right-skewed).
 
+## Tradeoffs
+
 The benefit of transforming the data is that we can use linear regression to model non-linear relationships. With this, we get all our tests and p-values for free. There are two downsides: 
 
 1. You have to choose the right transformation, which can be tricky. For example, if you choose a polynomial transformation, you have to choose the degree of the polynomial (e.g., age^2, age^3, etc.). If you choose a logarithmic transformation, you have to make sure that there are no zero or negative values in the data (because log(0) and log(negative) are undefined).
 2. The coefficients of the linear regression are not as interpretable as they are in a linear regression with untransformed variables. For example, if you have a polynomial transformation, the coefficient of age^2 is not as interpretable as the coefficient of age in a linear regression with untransformed variables. 
+
+## How to do this in R
+
+Let's see how to do this. 
+
+```{r}
+#| label: polynomial-regression
+df <- df |>
+  mutate(age_sqr = age^2)
+
+mod_polynomial <- lm(income ~ age + age_sqr, data = df)
+
+modelsummary(mod_polynomial, stars = T)
+```
+
+In the regression table above, we see that the coefficient of age^2 is negative and significant. 
+
+- Negative: this means that the relationship between age and income is inverse-U shaped (like $-x^2$)
+- Significant: this proves that the relationship is non-linear, because if the relationship were linear, the coefficient of age^2 would be zero (i.e., not significant). That's an **important benefit of using a polynomial transformation: we can test for non-linearity** by looking at the significance of the coefficient of the polynomial term (e.g., age^2). 
+
+How well does the polynomial regression fit the data? We can create a plot of the fitted line from the polynomial regression, and compare it to the LOESS fit.
+
+```{r}
+#| label: polynomial-regression-plot
+
+# same approach as with the binned regressions:
+# we create a new dataset for plotting the fitted line
+# from the polynomial regression,
+# and we add predicted income to this dataset using the predict() function
+
+pl <- tibble(
+  age = seq(18, 89, by = .1)
+) |>
+  mutate(
+    age_sqr = age^2
+  )
+pl$income <- predict(mod_polynomial, newdata = pl)
+
+ggplot(df, aes(x = age, y = income)) +
+  geom_jitter(height = 2500, alpha = .3) +
+  geom_smooth() +
+  geom_line(data = pl, color = "red") +
+  labs(
+    x = "Age",
+    y = "Income",
+    caption = "The red line is the fitted line from the polynomial regression."
+  )
+```
+
+Another important benefit of a polynomial regression is that we can use the coefficients to calculate things. Example: we can calculate the age at which income is maximized (i.e., the peak of the inverse-U shape). Remember that our polynomial regression is of the form:
+
+$$
+f(x) = \beta_0 + \beta_1 x + \beta_2 x^2
+$$
+
+This function is maximized at the point where the derivative is zero. 
+
+$$
+f'(x) = 0 \iff \beta_1 + 2 \beta_2 x = 0 \iff x = -\frac{\beta_1}{2 \beta_2}
+$$
+
+In our model, parameter $\beta_1$ is `age`, and parameter $\beta_2$ is `age_sqr`. We can calculate this in R using the coefficients from the polynomial regression:
+
+```{r}
+#| label: peak age
+
+# peak age = -beta_1 / (2 * beta_2)
+-coef(mod_polynomial)["age"] / (2 * coef(mod_polynomial)["age_sqr"])
+```
