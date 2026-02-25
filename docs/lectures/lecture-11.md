@@ -4,6 +4,8 @@ Romain Ferrali
 ``` r
 suppressPackageStartupMessages(library(tidyverse))
 library(modelsummary)
+# outsource the (boring) data cleaning code to a separate file
+# the source() function runs everything that's in that file
 source("./lectures/helpers.R")
 df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE) |>
   clean_gss()
