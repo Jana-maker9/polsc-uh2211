@@ -1,0 +1,39 @@
+---
+title: "Lecture 11: Non-linear regression"
+---
+
+```{r}
+#| label: setup
+
+suppressPackageStartupMessages(library(tidyverse))
+source("./lectures/helpers.R")
+df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE) |>
+  clean_gss()
+```
+
+# Non-linear regression
+
+Sometimes, the relationship between the independent variable(s) and the dependent variable is not linear. In these cases, we can use non-linear regression to model the relationship. There is a well-known non-linear relationship: age and income. Income tends to increase with age, but it tends to decrease after a certain age (e.g., after retirement). This is a non-linear relationship, because the relationship between age and income is not a straight line.
+
+There are two ways to model non-linear relationships:
+
+- Split your data into bins, and then use linear regression on the binned data. We call this a local regression, because we're fitting a linear regression to a local subset of the data (i.e., the data in each bin).
+- Transform the independent variable(s) or the dependent variable, and then use linear regression on the transformed variables.
+
+# Local regression
+
+The idea of local regression is to split the data into bins, and then fit a linear regression to each bin. This allows us to capture non-linear relationships, because we're fitting a different linear regression to each bin. The most common way to do this is to use a method called LOESS (locally estimated scatterplot smoothing). 
+
+Let's do this by hand first, then we'll see how to do it with `ggplot2`.
+
+# Transforming the data
+
+There are two common tricks: 
+
+1. Transform the independent variable(s) using a non-linear function; typically, a polynomial function (e.g., age^2).
+2. Transform the dependent variable using a non-linear function; typically, a logarithmic function (e.g., log(income)). This is especially common for data such as income, which tends to be right-skewed (i.e., there are a few very high values that can distort the relationship between the independent variable(s) and the dependent variable). By taking the logarithm of income, we can reduce the skewness and make the relationship more linear. The log trick for the dependent variable can also be used for independent variables (again, when the independent variable is right-skewed).
+
+The benefit of transforming the data is that we can use linear regression to model non-linear relationships. With this, we get all our tests and p-values for free. There are two downsides: 
+
+1. You have to choose the right transformation, which can be tricky. For example, if you choose a polynomial transformation, you have to choose the degree of the polynomial (e.g., age^2, age^3, etc.). If you choose a logarithmic transformation, you have to make sure that there are no zero or negative values in the data (because log(0) and log(negative) are undefined).
+2. The coefficients of the linear regression are not as interpretable as they are in a linear regression with untransformed variables. For example, if you have a polynomial transformation, the coefficient of age^2 is not as interpretable as the coefficient of age in a linear regression with untransformed variables. 
