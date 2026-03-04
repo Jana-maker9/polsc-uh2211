@@ -41,6 +41,33 @@ tests <- tibble(
 )
 ```
 
+## Subtelties of joins
+
+### Joining on variables with different names
+
+``` r
+tests <- tibble(
+  student_id = c(1, 1, 2, 2, 3, 3),
+  test_score = c(90, 85, 95, 80, 10, 20)
+)
+```
+
+### Joining on multiple variables
+
+``` r
+students <- tibble(
+  id = c(1, 2, 3),
+  name = c("Alice", "Bob", "Charlie"),
+  age = c(20, 21, 22)
+)
+
+tests <- tibble(
+  name = c("Alice", "Bob", "Charlie"),
+  age = c(20, 21, 22),
+  test_score = c(90, 85, 95)
+)
+```
+
 # Pivoting
 
 There are two formats:
