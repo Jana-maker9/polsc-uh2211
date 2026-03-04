@@ -40,12 +40,116 @@ students <- tibble(
 )
 ```
 
+``` r
+tests <- tibble(
+  id = c(1, 2, 3),
+  name = c("Alice", "Bob", "Charlie"),
+  test_score = c(90, 85, 95)
+)
+
+# DOING THE JOIN
+inner_join(students, tests, by = "id")
+```
+
+    # A tibble: 3 × 5
+         id name.x    age name.y  test_score
+      <dbl> <chr>   <dbl> <chr>        <dbl>
+    1     1 Alice      20 Alice           90
+    2     2 Bob        21 Bob             85
+    3     3 Charlie    22 Charlie         95
+
+### Good practice 1: always specify the by argument when performing a join.
+
+``` r
+# DOING THE JOIN
+# you should always specify the variable(s) that you want to join on, using the by argument
+# if you don't specify the by argument, the join will be performed on all variables
+# that have the same name in both datasets
+inner_join(students, tests, by = "id")
+```
+
+    # A tibble: 3 × 5
+         id name.x    age name.y  test_score
+      <dbl> <chr>   <dbl> <chr>        <dbl>
+    1     1 Alice      20 Alice           90
+    2     2 Bob        21 Bob             85
+    3     3 Charlie    22 Charlie         95
+
+``` r
+# look at the output: the join was performed using the "id"
+# variable, because that's the only variable that has the same name in both datasets
+inner_join(students, tests)
+```
+
+    Joining with `by = join_by(id, name)`
+
+    # A tibble: 3 × 4
+         id name      age test_score
+      <dbl> <chr>   <dbl>      <dbl>
+    1     1 Alice      20         90
+    2     2 Bob        21         85
+    3     3 Charlie    22         95
+
+``` r
+# now let's look at a problematic example
+students_pb <- students |>
+  mutate(
+    # this column is meant to reflect the student's overall letter grade
+    letter_grade = c("A", "B", "C")
+  )
+tests_pb <- tests |>
+  mutate(
+    # while this column is meant to reflect the student's letter grade in my class
+    # everyone got a D in my class
+    letter_grade = "D"
+  )
+
+# this works fine:
+# we're joining by the id variable; R creates 2 letter grade variables, one for each dataset
+inner_join(students_pb, tests_pb, by = "id")
+```
+
+    # A tibble: 3 × 7
+         id name.x    age letter_grade.x name.y  test_score letter_grade.y
+      <dbl> <chr>   <dbl> <chr>          <chr>        <dbl> <chr>         
+    1     1 Alice      20 A              Alice           90 D             
+    2     2 Bob        21 B              Bob             85 D             
+    3     3 Charlie    22 C              Charlie         95 D             
+
+``` r
+# this creates a problem:
+# we're joining by id and letter_grade
+# there are no matching rows
+# id 1 has letter grade A in students_pb and D in tests_pb -> so no match for id 1
+# id 2 has letter grade B in students_pb and D in tests_pb -> so no match for id 2,
+# ... and so on
+# -> so the result is empty
+
+# bottom line: ALWAYS SPECIFY THE BY ARGUMENT WHEN PERFORMING A JOIN
+# this will help you avoid unpleasant surprises like this one
+inner_join(students_pb, tests_pb)
+```
+
+    Joining with `by = join_by(id, name, letter_grade)`
+
+    # A tibble: 0 × 5
+    # ℹ 5 variables: id <dbl>, name <chr>, age <dbl>, letter_grade <chr>,
+    #   test_score <dbl>
+
+### Good practice 2: always join on a unique, numeric identifier
+
+Remember that in R, `"Alice"` and `"alice "` are different values. If we
+join on the name variable, we may run into problems if there are typos
+in the names, or if there are multiple students with the same name. This
+is why it is a good practice to always join on a unique, numeric
+identifier (e.g., id).
+
 ## Example 2: a one-to-many join
 
 Another type of relationship is a one-to-many relationship. In other
 words, each row in one dataset corresponds to multiple rows in the other
-dataset. In our example, each student took multiple tests, so there is a
-one-to-many relationship between the students and their test scores.
+dataset. In this example, each student took multiple tests, so there is
+a one-to-many relationship between the students and their test scores.
 There is a final type of relationship, called many-to-many, but we will
 not cover it in this lecture. Technically, whether the relationship is
 one-to-one, one-to-many, or many-to-many does not affect how we perform
@@ -57,7 +161,21 @@ tests <- tibble(
   id = c(1, 1, 2, 2, 3, 3),
   test_score = c(90, 85, 95, 80, 10, 20)
 )
+
+# you write joins for many-to-many relationships work just as for one-to-one relationships,
+# but the output will have more rows
+inner_join(students, tests, by = "id")
 ```
+
+    # A tibble: 6 × 4
+         id name      age test_score
+      <dbl> <chr>   <dbl>      <dbl>
+    1     1 Alice      20         90
+    2     1 Alice      20         85
+    3     2 Bob        21         95
+    4     2 Bob        21         80
+    5     3 Charlie    22         10
+    6     3 Charlie    22         20
 
 ## Diagnosing problems with joins
 
@@ -75,39 +193,270 @@ incorrect results. I like to think about this in the following way:
     - the number of rows we expect to see in each group of the joined
       dataset?
 
+Let’s go back to our initial example: one grade per student.
+
+1.  We expect to see a one-to-one relationship between the students and
+    their test scores.
+2.  We do not expect to see missing data: all students should have
+    exactly one grade.
+3.  We expect that
+    - the joined dataset will have 3 rows (one for each student)
+    - each group (i.e., each student) will have 1 row (one grade per
+      student)
+
+Now, consider the messy dataset below. We deliberately introduced some
+problems:
+
+- Student 2 (Bob) is missing (he didn’t take the test, thus has no
+  grade).
+- Student 3 (Charlie) took the test twice, thus has two grades.
+- Student 4 took the test, but is not in the students dataset (maybe he
+  is a new student who just joined the class, or maybe he is a student
+  from another class who took the test by mistake).
+
 ``` r
 tests <- tibble(
   id = c(1, 3, 3, 4),
   test_score = c(90, 85, 95, 10)
 )
+
+result <- inner_join(students, tests, by = "id")
+
+# let's look at the output: it has 3 rows, as expected, but not for the reasons we expected.
+# student 2 is gone, and student 3 has 2 rows.
+result
 ```
+
+    # A tibble: 3 × 4
+         id name      age test_score
+      <dbl> <chr>   <dbl>      <dbl>
+    1     1 Alice      20         90
+    2     3 Charlie    22         85
+    3     3 Charlie    22         95
+
+``` r
+# check that there are no duplicate rows in the result
+sanity_check_1 <- result |>
+  group_by(id) |>
+  # the n() function counts the number of rows in each group
+  summarise(n = n()) |>
+  # isolate the groups that have more than 1 row
+  filter(n > 1)
+# we get a non-empty dataset, which means that there are duplicate rows in the result
+sanity_check_1
+```
+
+    # A tibble: 1 × 2
+         id     n
+      <dbl> <int>
+    1     3     2
+
+``` r
+# check that all students are in the result
+# -> they're not, because student 2 is missing
+sanity_check_2 <- all(students$id %in% result$id)
+sanity_check_2
+```
+
+    [1] FALSE
+
+## Fixing problems with joins / the difference between left- and inner-joins.
+
+Fixing problems is really specific to the task at hand, and the problems
+you encountered in your diagnostics.
+
+Here, we have two problems:
+
+- Student 2 didn’t take the test, thus has no grade -\> we will discuss
+  this later
+- Student 3 took the test twice, thus has two grades -\> we will
+  aggregate his grades by taking the mean of his two test scores.
+- Student 4 took the test, but is not in the students dataset -\> we
+  want to ignore this student
+
+### Removing duplicates
+
+``` r
+# first, let's fix the problem of student 3 having two grades by taking the mean of his two test scores
+tests_fixed <- tests |>
+  group_by(id) |>
+  summarise(test_score = mean(test_score))
+```
+
+### Handling missing data
+
+When doing a join, it is common to distinguish the “left” table and the
+“right” table. When you write `inner_join(students, tests, by = "id")`,
+the students dataset is the left table, and the tests dataset is the
+right table. The type of join you choose (e.g., inner join, left join,
+right join) determines how you handle missing data.
+
+- `inner_join()`: only keeps rows that have a match in both datasets. In
+  our example, this means that we will only keep students who have a
+  test score, and we will only keep test scores that have a
+  corresponding student. This is the most common type of join.
+- `left_join()`: keeps all rows from the left dataset, and only the
+  matching rows from the right dataset. In our example, this means that
+  we will keep all students, even if they don’t have a test score, but
+  we will only keep test scores that have a corresponding student.
+- There are two less common types of joins: `right_join()` and
+  `full_join()`. `right_join()` is the opposite of `left_join()`: it
+  always We will not cover them in this lecture, but you can read about
+  them in the documentation.
+- There is one last, useful type of join: `anti_join()`. This keeps only
+  the rows that do not have a match in the other dataset. In our
+  example, this means that we will keep only students who don’t have a
+  test score, and only test scores that don’t have a corresponding
+  student. It is nice for diagnosing problems with joins, because it
+  allows us to see which rows are causing the problems.
+
+In practice, you will really balance between `inner_join()` and
+`left_join()`. In our use case:
+
+- Say you want to compute mean scores by gender: you don’t care about
+  students who don’t have a test score, so you can use `inner_join()`.
+- Say you want to do a mailing list where you want to send an email to
+  all students, with the grade for those who have one, and “you don’t
+  have a grade” for those who don’t have a test score, then you can use
+  `left_join()`.
+
+``` r
+# keep only students who are in both the left and right datasets
+inner_join(students, tests_fixed, by = "id")
+```
+
+    # A tibble: 2 × 4
+         id name      age test_score
+      <dbl> <chr>   <dbl>      <dbl>
+    1     1 Alice      20         90
+    2     3 Charlie    22         90
+
+``` r
+# keep all students in the left dataset, and only the matching rows in the right dataset
+left_join(students, tests_fixed, by = "id")
+```
+
+    # A tibble: 3 × 4
+         id name      age test_score
+      <dbl> <chr>   <dbl>      <dbl>
+    1     1 Alice      20         90
+    2     2 Bob        21         NA
+    3     3 Charlie    22         90
+
+``` r
+# keep all students (not very useful, but just for demonstration purposes)
+full_join(students, tests_fixed, by = "id")
+```
+
+    # A tibble: 4 × 4
+         id name      age test_score
+      <dbl> <chr>   <dbl>      <dbl>
+    1     1 Alice      20         90
+    2     2 Bob        21         NA
+    3     3 Charlie    22         90
+    4     4 <NA>       NA         10
+
+``` r
+# useful for debugging: keep all the students who were not matched in the right dataset
+anti_join(students, tests_fixed, by = "id")
+```
+
+    # A tibble: 1 × 3
+         id name    age
+      <dbl> <chr> <dbl>
+    1     2 Bob      21
 
 ## Subtelties of joins
 
 ### Joining on variables with different names
 
+Sometimes, the variable that we want to join on has different names in
+the two datasets. For example, in the students dataset, the variable
+that identifies the student is called “id”, while in the tests dataset,
+it is called “student_id” (because in the tests dataset, the id column
+refers to the test itself). There are a few ways to handle that.
+
 ``` r
 tests <- tibble(
   student_id = c(1, 1, 2, 2, 3, 3),
-  test_score = c(90, 85, 95, 80, 10, 20)
+  test_score = c(90, 85, 95, 80, 10, 20),
+  id = c(1, 2, 1, 2, 1, 2)
+)
+
+# approach 1: specify the by argument with the different variable names
+# left is for the left dataset, right is for the right dataset
+inner_join(students, tests, by = c("id" = "student_id"))
+```
+
+    # A tibble: 6 × 5
+         id name      age test_score  id.y
+      <dbl> <chr>   <dbl>      <dbl> <dbl>
+    1     1 Alice      20         90     1
+    2     1 Alice      20         85     2
+    3     2 Bob        21         95     1
+    4     2 Bob        21         80     2
+    5     3 Charlie    22         10     1
+    6     3 Charlie    22         20     2
+
+``` r
+# approach 2: rename the variable in one of the datasets so that they have the same name, and then join
+# (that's my favorite approach, because it makes the code more readable)
+inner_join(
+  students,
+  tests |> rename(test_id = id, id = student_id),
+  by = "id"
 )
 ```
 
+    # A tibble: 6 × 5
+         id name      age test_score test_id
+      <dbl> <chr>   <dbl>      <dbl>   <dbl>
+    1     1 Alice      20         90       1
+    2     1 Alice      20         85       2
+    3     2 Bob        21         95       1
+    4     2 Bob        21         80       2
+    5     3 Charlie    22         10       1
+    6     3 Charlie    22         20       2
+
 ### Joining on multiple variables
+
+Sometimes, you don’t have a unique identifier that you can join on, but
+you have multiple variables that together identify the rows. For
+example, in the students dataset, we have the name and age of the
+student, while in the tests dataset, we also have the name and age of
+the student. We can use both the name and age variables to perform the
+join. This is not a good practice, because it is prone to errors (e.g.,
+if there are typos in the names, or if there are multiple students with
+the same name and age). But sometimes, you don’t have a choice.
 
 ``` r
 students <- tibble(
   id = c(1, 2, 3),
   name = c("Alice", "Bob", "Charlie"),
-  age = c(20, 21, 22)
+  age = c(20, 21, 22),
+  email = c("alice@example.com", "bob@examoke.com", "charlie@me.com")
 )
 
+# see how our tests data has two Alices:
+# young Alice (also in the students dataset)
+# and old Alice (not in the students dataset)
 tests <- tibble(
-  name = c("Alice", "Bob", "Charlie"),
-  age = c(20, 21, 22),
-  test_score = c(90, 85, 95)
+  name = c("Alice", "Bob", "Charlie", "Alice"),
+  age = c(20, 21, 22, 23),
+  test_score = c(90, 85, 95, 10)
 )
+
+# when joining, we need to specify both the name and age variables in the by argument
+# notice how old Alice gets dropped from the result, because there is no matching row in the students dataset
+inner_join(students, tests, by = c("name", "age"))
 ```
+
+    # A tibble: 3 × 5
+         id name      age email             test_score
+      <dbl> <chr>   <dbl> <chr>                  <dbl>
+    1     1 Alice      20 alice@example.com         90
+    2     2 Bob        21 bob@examoke.com           85
+    3     3 Charlie    22 charlie@me.com            95
 
 # Pivoting
 
@@ -128,7 +477,45 @@ wide <- tibble(
   test_1 = c(90, 95, 10),
   test_2 = c(85, 80, 20)
 )
+
+longer <- wide |>
+  rename(first_name = name) |>
+  pivot_longer(
+    # the columns you want to pivot are the test_1 and test_2 columns
+    cols = c(test_1, test_2),
+    # these arguments are optional, but they make the output more readable
+    names_to = "test",
+    values_to = "score"
+  )
+
+longer
 ```
+
+    # A tibble: 6 × 4
+         id first_name test   score
+      <dbl> <chr>      <chr>  <dbl>
+    1     1 Alice      test_1    90
+    2     1 Alice      test_2    85
+    3     2 Bob        test_1    95
+    4     2 Bob        test_2    80
+    5     3 Charlie    test_1    10
+    6     3 Charlie    test_2    20
+
+``` r
+# why would we want to pivot?
+# because, say, we want to compute mean scores
+
+longer |>
+  group_by(id) |>
+  summarise(mean_score = mean(score))
+```
+
+    # A tibble: 3 × 2
+         id mean_score
+      <dbl>      <dbl>
+    1     1       87.5
+    2     2       87.5
+    3     3       15  
 
 ## Pivoting from long to wide format
 
@@ -139,4 +526,42 @@ long <- tibble(
   test = c(1, 2, 1, 2, 1, 2),
   score = c(90, 85, 95, 80, 10, 20)
 )
+
+long |>
+  pivot_wider(
+    names_from = test,
+    values_from = score,
+    # this is optional, but it makes the output more readable
+    names_prefix = "test_"
+  )
 ```
+
+    # A tibble: 3 × 4
+         id name    test_1 test_2
+      <dbl> <chr>    <dbl>  <dbl>
+    1     1 Alice       90     85
+    2     2 Bob         95     80
+    3     3 Charlie     10     20
+
+``` r
+# why would we want to pivot?
+# say because we want both the mean score by student and the details of each test score in the same dataset
+long |>
+  group_by(id) |>
+  mutate(
+    gpa = mean(score)
+  ) |>
+  pivot_wider(
+    names_from = test,
+    values_from = score,
+    names_prefix = "test_"
+  )
+```
+
+    # A tibble: 3 × 5
+    # Groups:   id [3]
+         id name      gpa test_1 test_2
+      <dbl> <chr>   <dbl>  <dbl>  <dbl>
+    1     1 Alice    87.5     90     85
+    2     2 Bob      87.5     95     80
+    3     3 Charlie  15       10     20
