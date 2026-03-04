@@ -5,6 +5,12 @@ Romain Ferrali
 suppressPackageStartupMessages(library(tidyverse))
 ```
 
+This lecture is the most important one we will cover on R. Most
+everyting else we saw in this course can be done with Excel. This, on
+the other hand, is something that is very difficult to do in Excel, and
+is one of the main reasons why we use R (or other programming languages)
+for data manipulation.
+
 # Joins
 
 Our problem: we have two datasets; one with information about students
@@ -13,7 +19,18 @@ scores (e.g., name, test score). We want to combine these two datasets
 into one dataset that contains all the information about the students
 and their test scores.
 
+This is a very common problem in data analysis. The action of comining
+two dataets is called a **join**. In other programming languages (e.g.,
+Stata), this is also called a **merge**.
+
 ## Example 1: a one-to-one join
+
+The notion of one-to-one join is conceptual, rather than technical. It
+means that there is a one-to-one relationship between the two datasets.
+In other words, each row in one dataset corresponds to exactly one row
+in the other dataset. In our example, each student took one test, so
+there is a one-to-one relationship between the students and their test
+scores.
 
 ``` r
 students <- tibble(
@@ -25,6 +42,16 @@ students <- tibble(
 
 ## Example 2: a one-to-many join
 
+Another type of relationship is a one-to-many relationship. In other
+words, each row in one dataset corresponds to multiple rows in the other
+dataset. In our example, each student took multiple tests, so there is a
+one-to-many relationship between the students and their test scores.
+There is a final type of relationship, called many-to-many, but we will
+not cover it in this lecture. Technically, whether the relationship is
+one-to-one, one-to-many, or many-to-many does not affect how we perform
+the join. However, it does affect how we interpret the results of the
+join.
+
 ``` r
 tests <- tibble(
   id = c(1, 1, 2, 2, 3, 3),
@@ -33,6 +60,20 @@ tests <- tibble(
 ```
 
 ## Diagnosing problems with joins
+
+There may be problems with the data that prevent us from performing the
+join correctly. For example, there may be duplicate rows in one of the
+datasets, or there may be missing values. It is important to diagnose
+these problems before performing the join, because they can lead to
+incorrect results. I like to think about this in the following way:
+
+1.  What is relationship we expect to see between the two datasets?
+    (one-to-one, one-to-many, many-to-many)?
+2.  Do we expect to see missing data?
+3.  How does this translate into
+    - the number of rows we expect to see in the joined dataset?
+    - the number of rows we expect to see in each group of the joined
+      dataset?
 
 ``` r
 tests <- tibble(
