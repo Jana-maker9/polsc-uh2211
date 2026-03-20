@@ -10,7 +10,9 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "wget -qO- \"https://yihui.org/tinytex/install-bin-unix.sh\" | sh",
+	"postCreateCommand": [
+		"wget -qO- \"https://yihui.org/tinytex/install-bin-unix.sh\" | sh && curl -fsSL https://claude.ai/install.sh | bash"
+	],
 	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {
@@ -23,4 +25,14 @@
 	},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
+	"remoteEnv": {
+        "PATH": "/home/rstudio/.local/bin:${containerEnv:PATH}"
+    },
+    // 👇 Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+    // "remoteUser": "root"
+    // 👇 Bind local folders into the container
+    "mounts": [
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude,target=/home/rstudio/.claude,type=bind,consistency=cached",
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude.json,target=/home/rstudio/.claude.json,type=bind,consistency=cached",
+    ]
 }
