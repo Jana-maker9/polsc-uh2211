@@ -5,15 +5,14 @@ title: "Lecture 13: Causality"
 ```{r}
 #| label: setup
 #| echo: false
-#| message: false
-#| warning: false
 
-library(tidyverse)
+suppressPackageStartupMessages(library(tidyverse))
 library(modelsummary)
 source("./lectures/helpers.R")
 
-df <- read_csv("./data/lecture-7-gss.csv") |> clean_gss()
-df_resume <- read_csv("./data/lecture-13-resume.csv")
+df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE) |>
+  clean_gss()
+df_resume <- read_csv("./data/lecture-13-resume.csv", show_col_types = FALSE)
 ```
 
 ## Empirical Motivation: Why Do Coefficients Change?
@@ -55,14 +54,14 @@ n <- 1000
 sim1 <- tibble(
   black = rbinom(n, 1, 0.5),
   edu = rnorm(n, mean = 12, sd = 3), # same distribution for both groups
-  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 5000)
+  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 100)
 )
 
 # World 2: Black respondents have 2 fewer years of education on average
 sim2 <- tibble(
   black = rbinom(n, 1, 0.5),
   edu = rnorm(n, mean = 12 - 2 * black, sd = 3), # correlated with race
-  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 5000)
+  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 100)
 )
 ```
 
@@ -160,7 +159,7 @@ $$
 The treated group is a representative sample of the population for $Y_i(1)$, and the control group is a representative sample for $Y_i(0)$. *It is only because of this independence that* we can write:
 
 $$
-\mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = \mathbb{E}[Y_i(1) \mid T_i = 1] - \mathbb{E}[Y_i(0) \mid T_i = 0]
+\mathbb{E}[Y_i(1) - Y_i(0)] = \mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = \mathbb{E}[Y_i(1) \mid T_i = 1] - \mathbb{E}[Y_i(0) \mid T_i = 0]
 $$
 
 ### From expectations to sample averages

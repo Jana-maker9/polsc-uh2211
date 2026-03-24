@@ -1,6 +1,15 @@
 # Lecture 13: Causality
 Romain Ferrali
 
+    Warning: There were 2 warnings in `mutate()`.
+    The first warning was:
+    ℹ In argument: `female = case_match(sex, "FEMALE" ~ 1, "MALE" ~ 0, .default =
+      NA)`.
+    Caused by warning:
+    ! `case_match()` was deprecated in dplyr 1.2.0.
+    ℹ Please use `recode_values()` instead.
+    ℹ Run `dplyr::last_dplyr_warnings()` to see the 1 remaining warning.
+
 ## Empirical Motivation: Why Do Coefficients Change?
 
 Consider a simple question: do Black and White Americans earn different
@@ -111,14 +120,14 @@ n <- 1000
 sim1 <- tibble(
   black = rbinom(n, 1, 0.5),
   edu = rnorm(n, mean = 12, sd = 3), # same distribution for both groups
-  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 5000)
+  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 100)
 )
 
 # World 2: Black respondents have 2 fewer years of education on average
 sim2 <- tibble(
   black = rbinom(n, 1, 0.5),
   edu = rnorm(n, mean = 12 - 2 * black, sd = 3), # correlated with race
-  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 5000)
+  income = 20000 - 3000 * black + 1500 * edu + rnorm(n, sd = 100)
 )
 ```
 
@@ -176,45 +185,45 @@ modelsummary(
 <tbody>
 <tr>
 <td>(Intercept)</td>
-<td>37790.810***</td>
-<td>21062.460***</td>
-<td>38026.920***</td>
-<td>19486.262***</td>
+<td>37708.252***</td>
+<td>20021.249***</td>
+<td>37936.126***</td>
+<td>19989.725***</td>
 </tr>
 <tr>
 <td></td>
-<td>(285.721)</td>
-<td>(659.546)</td>
-<td>(308.160)</td>
-<td>(687.646)</td>
+<td>(195.828)</td>
+<td>(13.191)</td>
+<td>(200.250)</td>
+<td>(13.753)</td>
 </tr>
 <tr>
 <td>black</td>
-<td>-2621.240***</td>
-<td>-2923.895***</td>
-<td>-6404.972***</td>
-<td>-3237.254***</td>
+<td>-2678.478***</td>
+<td>-2998.478***</td>
+<td>-6070.932***</td>
+<td>-3004.745***</td>
 </tr>
 <tr>
 <td></td>
-<td>(415.443)</td>
-<td>(316.751)</td>
-<td>(434.072)</td>
-<td>(340.477)</td>
+<td>(284.738)</td>
+<td>(6.335)</td>
+<td>(282.070)</td>
+<td>(6.810)</td>
 </tr>
 <tr>
 <td>edu</td>
 <td></td>
-<td>1417.131***</td>
+<td>1498.343***</td>
 <td></td>
-<td>1550.717***</td>
+<td>1501.014***</td>
 </tr>
 <tr>
 <td></td>
 <td></td>
-<td>(52.741)</td>
+<td>(1.055)</td>
 <td></td>
-<td>(54.244)</td>
+<td>(1.085)</td>
 </tr>
 <tr>
 <td>Num.Obs.</td>
@@ -225,10 +234,10 @@ modelsummary(
 </tr>
 <tr>
 <td>R2</td>
-<td>0.038</td>
-<td>0.442</td>
-<td>0.179</td>
-<td>0.549</td>
+<td>0.081</td>
+<td>1.000</td>
+<td>0.317</td>
+<td>1.000</td>
 </tr>
 </tbody><tfoot>
 <tr>
@@ -379,7 +388,7 @@ The treated group is a representative sample of the population for
 $Y_i(1)$, and the control group is a representative sample for $Y_i(0)$.
 *It is only because of this independence that* we can write:
 
-$$\mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = \mathbb{E}[Y_i(1) \mid T_i = 1] - \mathbb{E}[Y_i(0) \mid T_i = 0]$$
+$$\mathbb{E}[Y_i(1) - Y_i(0)] = \mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = \mathbb{E}[Y_i(1) \mid T_i = 1] - \mathbb{E}[Y_i(0) \mid T_i = 0]$$
 
 ### From expectations to sample averages
 
