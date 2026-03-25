@@ -1,0 +1,206 @@
+"sep_13" : '1' if responded in September 2013
+"dec_13" : '1' if responded in December 2013
+"jan_14" : '1' if responded in January 2014
+"may_14" : '1' if responded in May 2014
+"jun_14" : '1' if responded in June 2014
+"aug_1_14" : '1' if responded in August 2014 (survey 1)
+"aug_2_14" : '1' if responded in August 2014 (survey 2)
+
+"female" : '1' if the respondent is a female
+"age" : age of the respondent
+"educ" : categorical variable on education
+"d_educ1" : elementary school education
+"d_educ2" : junior high
+"d_educ3" : vocational school aft junior
+"d_educ4" : high school
+"d_educ5" : vocational school aft high
+"d_educ6" : junior tech college
+"d_educ7" : unfinished higher education
+"d_educ8" : higher education
+"hi_school" : '1' if person has high school edu or lower
+"college" : '1' if person has college edu or lower
+"univ" : '1' if person has higher edu or lower
+"optimism" : '1' if respondent thinks that country is doing better
+
+"pol_news" : '1' if a person remembers any 'political' news from last couple of week
+"non_pol_news" : '1' if a person remembers no 'political' news from last couple of week
+"news_count" : number of news from the list that respondent remembers; 'other' and 'dta' are not counted 
+"pol_news_count" : number of political news that respondent remembers
+"non_pol_news_count" : number of non-political news that respondent remembers
+
+"putinapprov" : approve of Putin? '1' - approve; '0' - disapprove
+"medvapprov" : approve of PM? '1' - approve; '0' - disapprove
+"govtapprov" : approve of the government? '1' - approve; '0' - disapprove
+"gubapprov" : approve of governor/mayor? '1' - approve; '0' - disapprove
+"dumaapprov" : approve of the parliament? '1' - approve; '0' - disapprove
+
+"occup" : categorical variable on <main> occupation (quota)
+"d_occup1" : respondent is an entrepreneur
+"d_occup2" : respondent is a manager
+"d_occup3" : respondent is a specialist/no managing functions
+"d_occup4" : respondent is a military worker, IIM, prosecutor
+"d_occup5" : respondent is a worker (no special education)
+"d_occup6" : respondent is a manual worker (including agricultural worker)
+"d_occup7" : respondent is a student
+"d_occup8" : respondent is retired due to age
+"d_occup9" : respondent is retired due to disability
+"d_occup10" : respondent is a housewife
+"d_occup11" : respondent is unemployed
+"brdwnnr" : categorical variable on <main> occupation of a breadwinner in the family (quota)
+"d_brdwnnr1" : breadwinner of the family is an entrepreneur
+"d_brdwnnr2" : breadwinner of the family is a manager
+"d_brdwnnr3" : breadwinner of the family is a specialist/no managing functions
+"d_brdwnnr4" : breadwinner of the family is a military worker, IIM, prosecutor
+"d_brdwnnr5" : breadwinner of the family is a worker (no special education)
+"d_brdwnnr6" : breadwinner of the family is a manual worker (including agricultural worker)
+"d_brdwnnr7" : breadwinner of the family is a student
+"d_brdwnnr8" : breadwinner of the family is retired due to age
+"d_brdwnnr9" : breadwinner of the family is retired due to disability
+"d_brdwnnr10" : breadwinner of the family is a housewife
+"d_brdwnnr11" : breadwinner of the family is unemployed
+"d_brdwnnr12" : breadwinner of the family respondent
+
+"econ_optimism_state" : categorical optimism variable on economic future of the state
+"econ_optimism_ind"    : categorical optimism variable on own economic future
+"polit_optimism_state" : categorical optimism variable on political future of the state
+"polit_optimism_ind" : categorical optimism variable on own future
+
+"hyp_narod_part" : hypothetically, would vote for narodnaya partiya
+"hyp_grazhd_platf" : hypothetically, would vote for grazhdanskaya platforma
+"hyp_edinoros" : hypothetically, would vote for edinaya rossiya (Putin)
+"hyp_kprf" : hypothetically, would vote for kprf (Zyuganov)
+"hyp_ldpr" : hypothetically, would vote for ldpr (Zhirinovsky)
+"hyp_nar_alns" : hypothetically, would vote for narodny alyans (Navalny)
+"hyp_patr_ros" : hypothetically, would vote for patrioty rossii
+"hyp_parnas" : hypothetically, would vote for parnas (Nemtsov)
+"hyp_just_russ" : hypothetically, would vote for spravedlivaya rossiya
+"hyp_yabloko" : hypothetically, would vote for yabloko
+"hyp_other" : hypothetically, would vote for other
+"hyp_against_all" : hypothetically, would vote against all
+"hyp_no_part_vote" : hypothetically, would not participate in party election
+"hyp_dta_part_vote" : hypothetically, finds it difficult to vote for any party
+
+"moscow" : '1' if respondent is a resident of Moscow
+"saintp" : '1' if respondent is a resident of Saint Petersburg
+"town" : '1' if the respondent is a city-resident
+
+"vote_2012" : '1' if respondent voted in 2012
+"who_vote_2012" : categorical variable on whom respondent voted for in 2012
+"vote_zyugan" : in 2012 voted for Zyuganov
+"vote_zhirin" : in 2012 voted for Zhirinovsky
+"vote_miron" : in 2012 voted for Mironov
+"vote_prohor" : in 2012 voted for Prokhorov
+"vote_putin" : in 2012 voted for Putin
+
+"check_vote_2012"
+
+"marital_status" : categorical variable on marital status
+"married" : '1' if married and live together
+"not_rgstrd" : '1' if live together but not registered
+"widow" : '1' if is a widow/widower
+"divorced" : '1' if divorced
+"no_divorce" : '1' if live separately, but not divorced
+"single" : '1' if single, and was never married
+"live_together" : 1 if respondent lives together with significant ones
+"live_separately" : 1 if respondent does not live together with significant ones
+"family_size" : number of people living together with the respondent +ownself
+"kids_18" : number of children in the family living together under 18
+"kids_16" : number of children in the family living together under 16
+
+"econ_group" : categorical variable on perceived economic group
+"econ_group1" : '1' if lowest perceived econonomic group
+"econ_group2" : '1' if 2nd perceived economic group
+"econ_group3" : '1' if 3rd perceived economic group
+"econ_group4" : '1' if 4th perceived economic group
+"econ_group5" : '1' if 5th perceived economic group
+"econ_group6" : '1' if highest perceived economic group
+"income" : reported income level
+"market" : categorical variable on the use of market/bazaar
+"mkt1" : 1 if doesn't buy groceries
+"mkt2" : 1 if participates in buying groceries
+"mkt3" : 1 if buys groceries with family
+"mkt4" : 1 if mainly responsible for groceries
+
+"internet" : categorical variable on the use of internet
+"int1" : no internet
+"int2" : never uses internet
+"int3" : uses internet less than once a month
+"int4" : uses internet roughly once a month
+"int5" : uses internet 2 or 3 times a month
+"int6" : uses internet about once a week
+"int7" : uses internet 2 or 3 times a week
+"int8" : uses internet 4 or 5 times a week
+"int9" : uses internet roughly once a day
+"int10" : uses internet several times a day
+"int_news" : '1' if person uses internet to follow news
+"int_learn" : '1' if person uses internet to learn about the country/world
+"int_info" : '1' if person uses internet to find needed info
+"int_books" : '1' if person uses internet to read books
+"int_movies" : '1' if person uses internet to watch movies
+"int_music" : '1' if person uses internet to listen to music
+"int_g_n_s" : '1' if person uses internet to buy goods and services
+"int_ent" : '1' if person uses internet for entertainment
+"int_comm" : '1' if person uses internet for communication
+"int_other" : '1' if person uses internet for other purposes
+"int_nono" : '1' if person does not use internet
+"int_network" : '1' if person uses internet to go on social networks
+
+"sxnstrgt" : categorical variable on Western sanctions' perceived targets (Magnitsky act as a proxy in January of 2014)
+"dsxnstrgt1" : '1' if perceived target of Western sanctions are the elites
+"dsxnstrgt2" : '1' if perceived target of Western sanctions is the people
+"dsxnstrgt3" : '1' if perceived that the West doesn't care whom to target with sanctions
+"dsxnstrgt4" : '1' if difficult to say who West wants to target with sanctions
+"sxnshrm" : categorical variable on the belief who Western sanctions harm
+"dsxnshrm1" : '1' if believes that Western sanctions harm the elites
+"dsxnshrm2" : '1' if believes that Western sanctions harm the people 
+"dsxnshrm3" : '1' if difficult to say who Western sanctions harm
+
+"usapprov" : '1' - approve of the United States; '0' - disapprove
+"euapprov" : '1' - approve of the European Union; '0' - disapprove
+"ukrapprov" : '1' - approve of the Ukraine; '0' - disapprove
+"belapprov" : '1' - approve of Belarus; '0' - disapprove
+"chnapprov" : '1' - approve of China; '0' - disapprove
+"israelapprov" : '1' - approve of Israel; '0' - disapprove
+"geoapprov" : '1' - approve of Georgia; '0' - disapprove
+
+"qto" : code of the town/village
+"qnas_pun"
+"qobl" : code of the oblast/region
+"qro"
+"qint"                
+"qank"
+"variant"
+"qs1"
+"qs2"
+"qs3"                 
+
+"news_1" : '1' if respondents remembers event 1
+"news_2" : '1' if respondents remembers event 2
+"news_3" : '1' if respondents remembers event 3
+"news_4" : '1' if respondents remembers event 4
+"news_5" : '1' if respondents remembers event 5
+"news_6" : '1' if respondents remembers event 6
+"news_7" : '1' if respondents remembers event 7
+"news_8" : '1' if respondents remembers event 8
+"news_9" : '1' if respondents remembers event 9
+"news_10" : '1' if respondents remembers event 10
+"news_11" : '1' if respondents remembers event 11
+"news_12" : '1' if respondents remembers event 12
+"news_13" : '1' if respondents remembers event 13
+"news_14" : '1' if respondents remembers event 14
+"news_15" : '1' if respondents remembers event 15
+"news_16" : '1' if respondents remembers event 16
+"news_17" : '1' if respondents remembers event 17
+"news_18" : '1' if respondents remembers event 18
+"news_19" : '1' if respondents remembers event 19
+"news_20" : '1' if respondents remembers event 20
+"news_21" : '1' if respondents remembers event 21
+"news_22" : '1' if respondents remembers event 22
+"news_23" : '1' if respondents remembers event 23
+"news_24" : '1' if respondents remembers event 24
+"news_25" : '1' if respondents remembers event 25
+"news_26" : '1' if respondents remembers event 26
+"news_27" : '1' if respondents remembers event 27
+"news_28" : '1' if respondents remembers event 28
+"news_29" : '1' if respondents remembers event 29
+"news_30" : '1' if respondents remembers event 30
