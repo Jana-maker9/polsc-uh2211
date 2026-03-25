@@ -529,8 +529,6 @@ include. Experimental and quasi-experimental designs solve this by
 severing all backdoor paths — including those through unobservables — by
 construction.
 
-------------------------------------------------------------------------
-
 ## Equilibrium Behavior and Causal DAGs
 
 DAGs assume a strict one-way flow of causation: every arrow goes from
@@ -585,8 +583,6 @@ fix — replacing a cycle with a common cause — is sometimes the right
 substantive story, and sometimes an awkward workaround. Knowing when to
 trust the DAG and when the question calls for a different framework is
 part of causal reasoning.
-
-------------------------------------------------------------------------
 
 ## Key Takeaway
 
