@@ -1,0 +1,225 @@
+# Lecture 16: Data visualization
+Romain Ferrali
+
+## Principles of good data visualization
+
+Good data visualization is not just about aesthetics. It is about
+**communicating information as clearly and honestly as possible**. The
+most influential framework for thinking about this comes from Edward
+Tufte, a statistician and designer who laid out a set of principles in
+his 1983 book *The Visual Display of Quantitative Information*.
+
+The five core principles are:
+
+1.  **Data-ink ratio.** Every drop of ink should earn its place by
+    encoding data. Remove everything that does not carry information:
+    background colors, redundant gridlines, unnecessary borders,
+    decorative elements.
+
+2.  **Graphical integrity.** The visual representation must not distort
+    the data. The most common violation is truncating the y-axis to make
+    a small difference look large.
+
+3.  **Data density.** Show as much data as possible in a compact space.
+    Aggregating to a single mean hides variation; showing the raw
+    distribution is almost always better.
+
+4.  **Small multiples.** When a relationship varies across groups,
+    repeat the same chart structure for each group side by side. This
+    makes comparisons natural and avoids overloaded single plots.
+
+5.  **Direct labeling.** Label data directly on the chart rather than
+    forcing the reader to look up a legend. Every time a reader’s eyes
+    travel away from the data, information is lost.
+
+These principles are not rules to follow mechanically. They are
+heuristics that help you ask: *is every element of this plot earning its
+place?*
+
+``` mermaid
+graph TD
+  A[Data-ink ratio] --> D[Data density]
+  B[Graphical integrity] --> D
+  D --> E[Small multiples]
+  D --> F[Direct labeling]
+  style A fill:#4a90d9,color:#fff
+  style B fill:#4a90d9,color:#fff
+  style D fill:#27ae60,color:#fff
+  style E fill:#f39c12,color:#fff
+  style F fill:#f39c12,color:#fff
+```
+
+------------------------------------------------------------------------
+
+## Example 1: Data-ink ratio
+
+We use the `mpg` dataset (built into ggplot2), which contains fuel
+economy data for 234 cars across 7 vehicle classes.
+
+**A first attempt.** Here is a bar chart of mean highway fuel efficiency
+by vehicle class.
+
+``` r
+mpg |>
+  group_by(class) |>
+  summarize(mean_hwy = mean(hwy)) |>
+  ggplot(aes(x = class, y = mean_hwy, fill = class)) +
+  geom_col() +
+  labs(
+    title = "Highway fuel efficiency by vehicle class",
+    x = "Vehicle class",
+    y = "Mean highway mpg",
+    fill = "Class"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/mpg-bad-1.png)
+
+**What is wrong with this plot?**
+
+**A better version.**
+
+## Example 2: Graphical integrity
+
+We use the resume experiment dataset from Bertrand and Mullainathan
+(2004). Researchers sent fictitious resumes with stereotypically Black
+or White names to job postings and recorded whether the applicant
+received a callback.
+
+We start from a regression model. Regressing callback on race gives us
+predicted callback rates for each group, along with standard errors we
+can use to construct confidence intervals.
+
+``` r
+# Regress callback on race
+mod <- lm(call ~ race, data = df_resume)
+
+# Predict callback rates for each group at 90% and 95% confidence levels
+preds <- tibble(race = c("black", "white"))
+ci <- predict(mod, preds, interval = "confidence", level = 0.95)
+
+# Combine into one tibble
+preds <- bind_cols(preds, as_tibble(ci))
+```
+
+**A misleading plot.**
+
+``` r
+ggplot(preds, aes(x = race, y = fit, fill = race, ymin = lwr, ymax = upr)) +
+  geom_col() +
+  geom_errorbar() +
+  labs(
+    title = "Racial discrimination in hiring: a massive gap",
+    x = "Applicant race",
+    y = "Callback rate",
+    fill = "Race"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/resume-bad-1.png)
+
+**What is wrong with this plot?**
+
+**A better version.**
+
+------------------------------------------------------------------------
+
+## Example 3: Small multiples and data density
+
+We use the `gapminder` dataset, which tracks life expectancy, GDP per
+capita, and population for 142 countries across 5 continents from 1952
+to 2007.
+
+**The spaghetti plot.** Here is life expectancy over time for all
+countries at once.
+
+``` r
+ggplot(gapminder, aes(x = year, y = lifeExp, color = country)) +
+  geom_line() +
+  theme(legend.position = "right") +
+  labs(
+    title = "Life expectancy over time",
+    x = "Year",
+    y = "Life expectancy (years)"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/gapminder-bad-1.png)
+
+**What is wrong with this plot?**
+
+**A better version.**
+
+------------------------------------------------------------------------
+
+## Example 4: Direct labeling
+
+We use the `txhousing` dataset (built into ggplot2), which tracks
+monthly median house sale prices across Texas cities. We compare 6 major
+cities.
+
+**A plot with a legend.**
+
+``` r
+ggplot(tx_annual, aes(x = year, y = median_price, color = city)) +
+  geom_line() +
+  labs(
+    title = "Median house prices in Texas cities",
+    x = "Year",
+    y = "Median sale price ($)",
+    color = "City"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/tx-bad-1.png)
+
+**What is wrong with this plot?**
+
+- To identify a line, the reader must: (1) look at the line, (2) note
+  its color, (3) scan the legend, (4) return to the data. This happens
+  every time.
+- The default ggplot2 color palette is not optimized for perceptual
+  distinctiveness.
+- The legend occupies space outside the plot, reducing the data area.
+
+**Direct labeling: place the city name at the end of each line.**
+
+``` r
+# Keep only the last observation per city to position the labels
+tx_labels <- tx_annual |>
+  group_by(city) |>
+  slice_max(year, n = 1)
+
+ggplot(tx_annual, aes(x = year, y = median_price, color = city)) +
+  geom_line(linewidth = 0.8) +
+  # place label just to the right of the terminal point
+  geom_text(
+    data = tx_labels,
+    aes(label = city),
+    hjust = 0, # anchor text to the left (so it extends rightward)
+    nudge_x = 0.3,
+    size = 3
+  ) +
+  # extend the x-axis to make room for labels on the right
+  scale_x_continuous(expand = expansion(mult = c(0.02, 0.2))) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "Median house prices in Texas cities",
+    x = "Year",
+    y = "Median sale price ($)"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/tx-good-1.png)
+
+The reader can now follow any line directly to its label without leaving
+the data area. Key changes: `geom_text()` with `hjust = 0` places city
+names just to the right of each line’s endpoint;
+`scale_color_brewer(palette = "Dark2")` provides a more perceptually
+distinct palette; `scale_x_continuous(expand = ...)` creates space for
+the labels on the right.
