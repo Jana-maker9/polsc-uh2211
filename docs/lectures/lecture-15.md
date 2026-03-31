@@ -24,6 +24,27 @@ $(1-p_G)^n$. So the probability of at least one genius pet is:
 
 $$P_G = 1 - (1 - p_G)^n$$
 
+``` r
+p_genius <- 0.5^8
+n_pets <- 1:1000
+pr_1_genius <- 1 - (1 - p_genius)^n_pets
+
+tibble(
+  n = n_pets,
+  p = pr_1_genius
+) |>
+  ggplot(aes(x = n, y = p)) +
+  geom_line() +
+  geom_hline(yintercept = .5, color = "red") +
+  scale_x_continuous(breaks = seq(0, 1000, 200)) +
+  labs(
+    x = "Number of pets",
+    y = "Pr(at least 1 genius)"
+  )
+```
+
+![](lecture-15_files/figure-commonmark/prob-genius-1.png)
+
 ## How to cheat at regression
 
 That logic extends to p-values. Let’s say you are 95% certain that your
@@ -88,3 +109,96 @@ variables to make them more suitable for regression. However, if you try
 many different transformations until you find one that gives you a
 significant result, then you may be back to the problem of multiple
 testing.
+
+``` r
+# we generate some data where the true relationship is linear
+x <- rnorm(1000)
+y <- 3 * x + 5 + rnorm(1000)
+# but the data that we get is exponentiated (like income)
+ey <- exp(y)
+
+df <- tibble(
+  x = x,
+  y = y,
+  ey = ey
+)
+
+# when we look at the data we observe, the relationship is weak
+# because we have a lot of outliers on the right
+ggplot(df, aes(x = x, y = ey)) +
+  geom_point(alpha = .2) +
+  geom_smooth(method = "lm")
+```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](lecture-15_files/figure-commonmark/log-transformation-1.png)
+
+``` r
+# when we use the log, we restore the true relationship
+ggplot(df, aes(x = x, y = log(ey))) +
+  geom_point(alpha = .2) +
+  geom_smooth(method = "lm")
+```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](lecture-15_files/figure-commonmark/log-transformation-2.png)
+
+## Asides
+
+1.  Missing data
+    - We’ll cover this next Monday
+    - Standard solution: drop observations with missing data (R does it
+      automatically)
+    - Problem 1: sample size drops $\Rightarrow$ less likely to get
+      significant relationships
+    - Problem 2: sample selection.
+    - How to assess? Check whether coefficients on other variables
+      change drastically (i.e., much larger/smaller, or change sign).
+      - No: no selection
+      - Yes: selection
+2.  Standardized variables
+    - Definition: consider variable $x$ with mean $\mu$ and standard
+      deviation $\sigma$. The standardized variable
+      $x_{\text{std}} = \frac{x - \mu}{\sigma}$
+    - Why does it matter?
+      1.  Standardization helps remove differences in the data. Example:
+          you want to compare students across schools. School A grades
+          severely: there’s an average of 5/10, and a SD of 2. School B
+          is more lenient: the average is 8/10 and the SD is 1. Thus, a
+          student that got 9/10 is somehow “better” in school A than in
+          school B. This will be reflected in the standardized scores
+          (9/10 = 2 in school A, 1 in school B).
+      2.  When data is normally distributed, one third of the data is
+          between -1 SD and the mean, and 1 third is between the mean
+          and +1 SD. So, increasing a variable by 1 SD makes you move
+          from the median to the upper third. Increasing a variable by 2
+          SD makes you move from the bottom third to the upper third
+          (see plot below).
+      3.  Thus, we can use standardized scores to compare across
+          quantities that would otherwise be incomparable. Say you’re
+          studying the determinants of educational performance. You find
+          that income and study time both increase educational
+          performance. Specifically, you find that increasing income by
+          \$100 increases test scores by .2, and increasing study time
+          by one hour increases test scores by .1. Which of these
+          variables has the largest effect? It is unclear how to compare
+          one hour to \$100. Considering standardized variables solves
+          the issue, as you can speak of increasing income and study
+          time by 1 SD.
+
+``` r
+v <- rnorm(1e4, mean = 0, sd = 1)
+ggplot(tibble(data = v), aes(data)) +
+  geom_density() +
+  geom_vline(xintercept = c(-1, 1), color = "red") +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks = seq(-4, 4, 1)) +
+  labs(
+    title = "A normal distribution",
+    caption = "2/3 of the data is between the 2 red lines"
+  )
+```
+
+![](lecture-15_files/figure-commonmark/normal%20distribution-1.png)
