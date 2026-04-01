@@ -295,25 +295,6 @@ gl_data <- gapminder |>
 
 ``` r
 gapminder |>
-  filter(continent == "Asia") |>
-  select(country) |>
-  distinct() |>
-  pull(country)
-```
-
-     [1] Afghanistan        Bahrain            Bangladesh         Cambodia          
-     [5] China              Hong Kong, China   India              Indonesia         
-     [9] Iran               Iraq               Israel             Japan             
-    [13] Jordan             Korea, Dem. Rep.   Korea, Rep.        Kuwait            
-    [17] Lebanon            Malaysia           Mongolia           Myanmar           
-    [21] Nepal              Oman               Pakistan           Philippines       
-    [25] Saudi Arabia       Singapore          Sri Lanka          Syria             
-    [29] Taiwan             Thailand           Vietnam            West Bank and Gaza
-    [33] Yemen, Rep.       
-    142 Levels: Afghanistan Albania Algeria Angola Argentina Australia ... Zimbabwe
-
-``` r
-gapminder |>
   # Create a boolean column to optionally highlight a few countries
   mutate(
     highlight = country %in%

@@ -240,12 +240,6 @@ gl_data <- gapminder |>
   summarize(lifeExp = mean(lifeExp))
 
 gapminder |>
-  filter(continent == "Asia") |>
-  select(country) |>
-  distinct() |>
-  pull(country)
-
-gapminder |>
   # Create a boolean column to optionally highlight a few countries
   mutate(
     highlight = country %in%
