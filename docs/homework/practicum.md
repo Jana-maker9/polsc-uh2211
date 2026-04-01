@@ -3,7 +3,10 @@ Romain Ferrali & Paul Love
 
 Feel free to use the starter template at
 <https://github.com/recap-org/template-r-small> for a clean starting
-setup.
+setup. Also feel free to check out the [commented
+example](../../assets/example-practicum.pdf) using an article from [Good
+Authority](https://goodauthority.org/), which is a newsletter that
+applies data science to current political events.
 
 For this assignment, you will need materials from the course’s GitHub
 repository:
@@ -75,17 +78,19 @@ should go in an Appendix.
 
 I am looking for five key things in this assignment:
 
-1.  That you can translate hypotheses to DAGs and DAGs to regressions
+1.  That you can translate hypotheses to regressions (evaluated from the
+    code and the text)
 2.  That you can interpret those regressions correctly and explain their
-    results
+    results (mostly evaluated from the text)
 3.  That you can design and produce high-quality data visualizations
     that each make one key point and have all necessary elements
     (titles, axis labels, legends, etc.) to be understandable on their
     own.
 4.  That you can explain the causal limitations of your analyses.
+    (evaluated from the text)
 5.  Most importantly, that you can communicate all of this clearly to a
     non-statistical audience in a well-formatted and well-structured
-    report.
+    report. (evaluated from the text)
 
 ## Important reminder
 

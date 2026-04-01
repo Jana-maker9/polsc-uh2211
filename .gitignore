@@ -2,6 +2,7 @@
 
 # Quarto output
 *.pdf
+!assets/*.pdf
 *.html
 
 # History files
