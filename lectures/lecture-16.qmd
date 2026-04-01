@@ -69,6 +69,29 @@ mpg |>
 
 **A better version.**
 
+```{r}
+#| label: better-plot-1
+#| fig-height: 2
+
+mpg |>
+  group_by(class) |>
+  summarize(mean_hwy = mean(hwy)) |>
+  arrange(mean_hwy) |>
+  mutate(
+    class = as_factor(class),
+    class = fct_inorder(class)
+  ) |>
+  ggplot(aes(x = class, y = mean_hwy)) +
+  geom_col() +
+  scale_y_continuous(limits = c(0, 30)) +
+  coord_flip() +
+  labs(
+    title = "Highway fuel efficiency by vehicle class",
+    x = "Vehicle class",
+    y = "Mean highway mpg"
+  )
+```
+
 ## Example 2: Graphical integrity
 
 We use the resume experiment dataset from Bertrand and Mullainathan (2004). Researchers sent fictitious resumes with stereotypically Black or White names to job postings and recorded whether the applicant received a callback.
@@ -91,9 +114,17 @@ mod <- lm(call ~ race, data = df_resume)
 # Predict callback rates for each group at 90% and 95% confidence levels
 preds <- tibble(race = c("black", "white"))
 ci <- predict(mod, preds, interval = "confidence", level = 0.95)
+ci_90 <- predict(mod, preds, interval = "confidence", level = 0.90)
 
 # Combine into one tibble
-preds <- bind_cols(preds, as_tibble(ci))
+preds <- bind_cols(
+  preds,
+  as_tibble(ci),
+  as_tibble(ci_90) |> select(
+    lwr_90 = lwr,
+    upr_90 = upr
+  )
+)
 ```
 
 **A misleading plot.**
@@ -102,7 +133,7 @@ preds <- bind_cols(preds, as_tibble(ci))
 #| label: resume-bad
 
 ggplot(preds, aes(x = race, y = fit, fill = race, ymin = lwr, ymax = upr)) +
-  geom_col() +
+  geom_point() +
   geom_errorbar() +
   labs(
     title = "Racial discrimination in hiring: a massive gap",
@@ -116,7 +147,22 @@ ggplot(preds, aes(x = race, y = fit, fill = race, ymin = lwr, ymax = upr)) +
 
 **A better version.**
 
----
+```{r}
+#| label: resume-good
+#| fig-height: 2
+
+ggplot(preds, aes(x = race, y = fit, ymin = lwr, ymax = upr)) +
+  geom_point() +
+  geom_linerange() +
+  geom_linerange(aes(ymin = lwr_90, ymax = upr_90), linewidth = 1) +
+  scale_y_continuous(limits = c(0, 0.12), labels = scales::percent) +
+  coord_flip() +
+  labs(
+    title = "Racial discrimination in hiring: a massive gap",
+    x = "Applicant race",
+    y = "Callback rate"
+  )
+```
 
 ## Example 3: Small multiples and data density
 
@@ -129,6 +175,7 @@ We use the `gapminder` dataset, which tracks life expectancy, GDP per capita, an
 
 ggplot(gapminder, aes(x = year, y = lifeExp, color = country)) +
   geom_line() +
+  scale_color_discrete(guide = "none") +
   theme(legend.position = "right") +
   labs(
     title = "Life expectancy over time",
@@ -140,6 +187,27 @@ ggplot(gapminder, aes(x = year, y = lifeExp, color = country)) +
 **What is wrong with this plot?**
 
 **A better version.** 
+
+```{r}
+#| label: gapminder-bad
+
+gl_data <- gapminder |>
+  group_by(year, continent) |>
+  summarize(lifeExp = mean(lifeExp))
+
+gapminder |>
+  mutate(highlight = country == "Afghanistan") |>
+  ggplot(aes(x = year, y = lifeExp)) +
+  geom_line(aes(group = country, color = highlight, alpha = highlight)) +
+  geom_line(data = gl_data, linewidth = 2) +
+  theme_minimal() +
+  labs(
+    title = "Life expectancy over time",
+    x = "Year",
+    y = "Life expectancy (years)"
+  ) +
+  facet_wrap(~continent)
+```
 
 ---
 

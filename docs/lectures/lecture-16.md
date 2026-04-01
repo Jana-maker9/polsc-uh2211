@@ -59,25 +59,33 @@ economy data for 234 cars across 7 vehicle classes.
 **A first attempt.** Here is a bar chart of mean highway fuel efficiency
 by vehicle class.
 
-``` r
-mpg |>
-  group_by(class) |>
-  summarize(mean_hwy = mean(hwy)) |>
-  ggplot(aes(x = class, y = mean_hwy, fill = class)) +
-  geom_col() +
-  labs(
-    title = "Highway fuel efficiency by vehicle class",
-    x = "Vehicle class",
-    y = "Mean highway mpg",
-    fill = "Class"
-  )
-```
-
 ![](lecture-16_files/figure-commonmark/mpg-bad-1.png)
 
 **What is wrong with this plot?**
 
 **A better version.**
+
+``` r
+mpg |>
+  group_by(class) |>
+  summarize(mean_hwy = mean(hwy)) |>
+  arrange(mean_hwy) |>
+  mutate(
+    class = as_factor(class),
+    class = fct_inorder(class)
+  ) |>
+  ggplot(aes(x = class, y = mean_hwy)) +
+  geom_col() +
+  scale_y_continuous(limits = c(0, 30)) +
+  coord_flip() +
+  labs(
+    title = "Highway fuel efficiency by vehicle class",
+    x = "Vehicle class",
+    y = "Mean highway mpg"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/better-plot-1-1.png)
 
 ## Example 2: Graphical integrity
 
@@ -97,16 +105,24 @@ mod <- lm(call ~ race, data = df_resume)
 # Predict callback rates for each group at 90% and 95% confidence levels
 preds <- tibble(race = c("black", "white"))
 ci <- predict(mod, preds, interval = "confidence", level = 0.95)
+ci_90 <- predict(mod, preds, interval = "confidence", level = 0.90)
 
 # Combine into one tibble
-preds <- bind_cols(preds, as_tibble(ci))
+preds <- bind_cols(
+  preds,
+  as_tibble(ci),
+  as_tibble(ci_90) |> select(
+    lwr_90 = lwr,
+    upr_90 = upr
+  )
+)
 ```
 
 **A misleading plot.**
 
 ``` r
 ggplot(preds, aes(x = race, y = fit, fill = race, ymin = lwr, ymax = upr)) +
-  geom_col() +
+  geom_point() +
   geom_errorbar() +
   labs(
     title = "Racial discrimination in hiring: a massive gap",
@@ -121,6 +137,22 @@ ggplot(preds, aes(x = race, y = fit, fill = race, ymin = lwr, ymax = upr)) +
 **What is wrong with this plot?**
 
 **A better version.**
+
+``` r
+ggplot(preds, aes(x = race, y = fit, ymin = lwr, ymax = upr)) +
+  geom_point() +
+  geom_linerange() +
+  geom_linerange(aes(ymin = lwr_90, ymax = upr_90), linewidth = 1) +
+  scale_y_continuous(limits = c(0, 0.12), labels = scales::percent) +
+  coord_flip() +
+  labs(
+    title = "Racial discrimination in hiring: a massive gap",
+    x = "Applicant race",
+    y = "Callback rate"
+  )
+```
+
+![](lecture-16_files/figure-commonmark/resume-good-1.png)
 
 ------------------------------------------------------------------------
 
