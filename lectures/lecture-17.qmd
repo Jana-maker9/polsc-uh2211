@@ -1,0 +1,127 @@
+---
+title: "Lecture 17: Missing data and measurement error"
+---
+
+- Today, we will discuss problems with data quality: measurement error and missing data.
+- Two big categories: 
+  - Quality problems are random (e.g. random measurement error, missing completely at random)
+  - Quality problems are systematic (e.g. systematic measurement error, missing not at random)
+
+Which one is worse? 
+
+Systematic problems are worse, but random problems are still a problem.
+
+## Measurement error
+
+###
+
+- Statistics is based on the idea that there are errors in our data, and helps us to understand how to deal with them.
+- It's this idea that we observe $\tilde{y} = y + \epsilon$, where $\epsilon$ is the measurement/sampling error.  
+  - $y$ is the true temperature of the water, $\tilde{y}$ is the observed temperature measured by a real (imperfect) thermometer. $\epsilon$ is the *measurement* error in our measurement.
+  - $y$ is average height of students in a class, $\tilde{y}$ is the observed height of one student, and $\epsilon$ is the *sampling* error.
+
+###
+```{r}
+#| label: measurement-error
+
+## a plot with vertical bar at 100C water temperature + normal PDF around it
+```
+
+###
+
+- taking the average of many measurements $\tilde{y}_1, \tilde{y}_2, \ldots, \tilde{y}_n$ cancels out errors cancel
+  - We can recover the true value $y$
+  - and derive confidence intervals etc.
+- This only works because the errors are random.
+
+### Problems with random measurement error
+
+Experiment: 
+
+1. at what temperature does water boil? 
+  - I want to measure $y$ (boiling point of water)
+  - $y = \tilde{y} + \epsilon$
+2. how does that vary with salinity? 
+  - I want to measure $y$ (boiling point of water) as a function of $x$ (salinity)
+  - $y = \alpha + \beta x + \epsilon$
+
+  ###
+
+- Answering question 1: my measure will be noisy, but more measurements/better measurement will help (so, small problem).
+- Answering question 2: 
+  - measurement error in $y$: my measure of the relationship between boiling point and salinity ($\beta$) will be noisy, but more measurements/better measurement will help (so, small problem).
+  - measurement error in $x$: my measure of the relationship between boiling point and salinity ($\beta$) will be biased towards zero (attenuation bias; only better measurement helps (so, big problem)).
+
+### Systematic measurement error
+
+- Random measurement error: some thermometers are off by some temperature (above, below): $y = \tilde{y} + \epsilon$
+- Systematic measurement error: all thermometers from one supplier are off by 1 degree above: $y = \tilde{y}$ + 1 + \epsilon$
+- Why is this a problem? 
+  - We will overestimate the boiling point of water (even if those thermometers are randomly distributed across experimenters).
+  - There is no way to fix this problem with more measurements (we will just get more measurements of the wrong value).
+
+### In the social sciences: random or systematic measurement error?
+
+- On a scale of 1 to 10, how happy are you? 
+  - Random measurement error: some people are in a bad mood, some people are in a good mood, and that affects their answer.
+- Have you ever paid a bribe?
+  - Systematic measurement error: people are likely to underreport this, so we will underestimate the true value.
+
+### Solutions to systematic measurement error
+
+1. Use better measurement tools (e.g. better survey questions, better thermometers).
+2. Think of the direction of the bias and interpret results accordingly. Example: 
+  - Question 1: do you support Donald Trump? (pre 2024) 
+  - Question 2: trust in government?
+  - Finding: government trust among Trump supporters = 0.3, government trust among non-Trump supporters = 0.5.
+  - Interpretation: Trump supporters are less trusting of government than non-Trump supporters, but the true difference is likely larger than 0.2 (because non-Trump supporters contain liars, who, if they behave like honest Trump supporters, have lower government Trump).
+
+## Missing data
+
+### 
+
+- We can think of missing data as a measurement error where the error is so large that we can't even observe the value (i.e. it's missing).
+- The same issues carry over
+  - If data are missing at random, the sample is smaller, which increases the noise (though here, we don't have attenuation bias).
+  - If data are missing systematically, the sample is biased, which can lead to incorrect conclusions.
+
+### Solutions
+
+1. Throw away the data (i.e., only analyze observations where all variables are present).
+2. Treat missing data as a separate category (e.g. create a dummy variable for missingness).
+  - Good test for whether data are missing at random or not: if the missingness dummy variable is correlated with the outcome variable, then data are likely missing systematically.
+2. Impute the missing data 
+  - Simple: assign the mean (does not help when data systematically missing systematically)
+  - Complicated: using a regression model to predict the missing values based on other variables.
+  - Imputation can help to reduce noise
+    - Example: an observation has 1/10 variables missing. It's a shame to throw it away. Use a regression model to predict the missing variable based on the other 9 variables. This means we can use this observation in our analysis, benefiting from the 9 observed variables. 
+    - That's provided our imputation procedure works well (and that's a big if, there's often no way to know).
+
+## In practice
+
+###
+
+- We often have a mix of random and systematic measurement error, and a mix of missing data that is random and systematic.
+- And we're not 100% sure which of our control variables play a causal role and which do not
+- So we usually show results
+  - with and without controls
+  - keeping sample size constant (i.e. only using observations with no missing data)
+
+### A bad example
+
+```{r}
+use GSS data, show a regression of income on education, then income on education + race + age
+```
+
+### Good example 1
+
+```{r}
+use GSS data, show a regression of income on education, then income on education + race + age, using the same sample (i.e. only observations with no missing data)
+```
+
+### Good example 2
+
+```{r}
+use GSS data, show a regression of income on education (full sample), then income on education (small sample), then income on education + race + age, using the same sample (i.e. only observations with no missing data)
+```
+
