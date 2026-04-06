@@ -1,5 +1,7 @@
 .DS_Store
 
+docs/lectures/lecture-17*
+
 # Quarto output
 *.pdf
 !assets/*.pdf
