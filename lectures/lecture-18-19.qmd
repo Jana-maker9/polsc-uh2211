@@ -1,0 +1,329 @@
+---
+title: "Lecture 18-19: Webscrapping"
+---
+
+```{r}
+#| label: setup
+#| echo: false
+
+library(tidyverse)
+library(httr2)
+library(rvest)
+```
+
+## How does the web work?
+
+The internet has become one of the richest data sources available to social scientists. News archives, government documents, film databases, social media posts, song catalogues — nearly anything published online is, in principle, accessible to quantitative analysis. **Web scraping** is the practice of extracting that data programmatically: writing code to send requests to web servers and parsing the responses into structured data we can analyze in R.
+
+To scrape effectively, you need to understand the basic mechanics of web communication. Every interaction with the web is a request-response exchange between a **client** (your browser, or your R script) and a **server**.
+
+### Requests
+
+A request has four components:
+
+- **URL** — The address of the resource. It identifies the server (`https://itunes.apple.com`) and the specific resource on that server (`/search`). Optional *query parameters*, appended after a `?`, let you filter or configure the request — for example, `?term=beyonce&media=music&limit=50`.
+- **Method** — The operation you want to perform. The two you will encounter:
+  - `GET`: retrieve data from the server. This is what your browser does every time you visit a page, and what we will use almost exclusively when scraping.
+  - `POST`: send data *to* the server (e.g., submitting a login form or uploading a file). Some APIs require POST for write operations, but most read-only APIs use GET.
+- **Headers** — Metadata attached to the request, invisible to ordinary users. Common headers include `User-Agent` (identifying which software is making the request) and `Cookie` (session credentials for authenticated sites).
+- **Body** — A payload sent alongside the request. Mostly used with POST to transmit form data or structured data. GET requests typically have no body.
+
+### Responses
+
+The server's reply has three parts:
+
+- **Status code** — A three-digit number summarizing what happened.
+  - `200 OK`: success.
+  - `4xx` codes mean *you* made an error: `400` (malformed request), `401` (authentication required), `403` (forbidden), `404` (not found).
+  - `5xx` codes mean the *server* has a problem: `500` (internal server error), `503` (service unavailable).
+- **Headers** — Metadata about the response: content type (`text/html`, `application/json`), caching instructions, rate-limit counters.
+- **Body** — The actual content — an HTML page, a structured data object, an image, a CSV file — whatever was requested.
+
+## Webscraping with APIs
+
+Many websites expose a structured data interface called an **Application Programming Interface (API)**. Rather than returning a full HTML page designed for browsers, an API returns data in a machine-readable format, almost always **JavaScript Object Notation (JSON)** — a plain-text structure built from nested key-value pairs.
+
+```json
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "artistName": "Beyoncé",
+      "trackName": "Crazy in Love",
+      "releaseDate": "2003-06-24T07:00:00Z",
+      "trackTimeMillis": 235373,
+      "primaryGenreName": "R&B/Soul"
+    },
+    {
+      "artistName": "Beyoncé",
+      "trackName": "Halo",
+      "releaseDate": "2008-11-18T08:00:00Z",
+      "trackTimeMillis": 261493,
+      "primaryGenreName": "R&B/Soul"
+    }
+  ]
+}
+```
+
+When an API is available, prefer it over scraping raw HTML. APIs are more stable (they do not change when the site redesigns its visual layout), more efficient (you get only the data you need), and more legitimate (you are using the intended data access method).
+
+### Example: the iTunes Search API
+
+Apple provides a free, no-credentials-required search API for its music and media catalogue. Let's use it to ask: **have popular songs gotten shorter over time?**
+
+We'll search for a handful of well-known artists with long careers and compare average track duration across the years.
+
+#### Step 1: Send a request
+
+```{r}
+#| label: itunes-request
+
+resp <- request("https://itunes.apple.com/search") |>
+  req_url_query(
+    term = "beyonce",
+    media = "music",
+    entity = "song",
+    limit = 200
+  ) |>
+  req_perform()
+
+resp
+```
+
+`request()` builds a request object. `req_url_query()` attaches query parameters as key-value pairs — no manual URL construction needed. `req_perform()` sends the request and returns the response.
+
+How do we know which endpoints and query parameters to use? The API documentation is the best source. For iTunes, see [the official docs](https://performance-partners.apple.com/search-api). 
+
+#### Step 2: Inspect the response
+
+```{r}
+#| label: itunes-status
+
+resp |> resp_status()
+```
+
+A status of 200 means success. Let's look at the response body:
+
+```{r}
+#| label: itunes-inspect
+
+resp |> resp_body_string()
+```
+
+The body is a named list with two elements: `resultCount` (how many records were returned) and `results` (a list where each element is one track). Each track is itself a list of fields — we saw the field names in the JSON example above.
+
+#### Step 3: Parse into a tibble
+
+```{r}
+#| label: itunes-parse
+
+```
+
+
+#### Step 4: Clean and analyze
+
+```{r}
+#| label: itunes-clean
+
+```
+
+#### Step 5: Scale up to multiple artists
+
+One artist is suggestive; let's see whether the pattern holds more broadly by repeating the search for several artists and combining the results.
+
+```{r}
+#| label: itunes-multi
+
+artists <- c("beyonce", "taylor swift", "drake", "adele", "ed sheeran")
+
+```
+
+```{r}
+#| label: itunes-multi-plot
+
+```
+
+## Webscraping with HTML
+
+Not every website offers an API. Often the data we want lives directly in a webpage — encoded in the **HyperText Markup Language (HTML)** that browsers parse and render visually. We can still extract it programmatically by navigating the HTML structure.
+
+HTML is a tree of nested **elements**. Each element has a tag name, optional attributes, and content. A simple table looks like this:
+
+```html
+<table>
+  <tr>
+    <th>Title</th>     <th>Year</th>  <th>Gross</th>
+  </tr>
+  <tr>
+    <td>Avengers: Endgame</td>  <td>2019</td>  <td>$2,799,439,100</td>
+  </tr>
+</table>
+```
+
+To extract specific elements from a page, we use **CSS selectors** — patterns that match elements by their tag, class, or identifier:
+
+| Selector | Matches |
+|---|---|
+| `table` | Any `<table>` element |
+| `.wikitable` | Any element with `class="wikitable"` |
+| `#summary` | The element with `id="summary"` |
+| `table.wikitable` | A `<table>` element with class `wikitable` |
+
+The `rvest` package provides a clean interface for fetching pages and navigating their structure.
+
+### Example: Wikipedia's highest-grossing films
+
+Wikipedia's list of highest-grossing films is published as a `wikitable` — a consistently-structured HTML table that parses cleanly. Let's scrape it and ask: **has the box-office ceiling risen over time?**
+
+#### Step 1: Fetch and parse the page
+
+```{r}
+#| label: wiki-fetch
+
+page <- read_html(
+  "https://en.wikipedia.org/wiki/List_of_highest-grossing_films"
+)
+page
+```
+
+`read_html()` fetches the page over HTTP and parses the HTML into a tree we can navigate. The output tells us how many nodes the document contains — we don't read those directly; we use selectors instead.
+
+#### Step 2: Find the table
+
+```{r}
+#| label: wiki-table
+
+films_raw <- page |>
+  html_element("table.wikitable") |>
+  html_table()
+
+films_raw
+```
+
+`html_element()` finds the first element matching the selector. `html_table()` converts a `<table>` node directly into a tibble, handling the row-and-column structure for us.
+
+#### Step 3: Clean the data
+
+```{r}
+#| label: wiki-clean
+
+```
+
+
+
+#### Step 4: Analyze
+
+```{r}
+#| label: wiki-plot
+
+```
+
+This comparison is not inflation-adjusted, so it is biased toward more recent films — a dollar in 1994 is worth about twice a dollar today. Correcting for inflation would require merging in a historical price index; the scraping is the easy part.
+
+## Webscraping with a headless browser
+
+The two approaches above cover most scraping scenarios, but both break down on one type of site: pages where the content is **rendered by JavaScript** in the browser rather than included in the initial HTML. Modern single-page applications, live dashboards, and some search results fall into this category. If you fetch a page and find that the table visible in your browser is absent from the raw HTML, JavaScript rendering is the likely cause.
+
+The solution is a **headless browser** — a full web browser that runs without a visible window, executes JavaScript, and lets you extract the fully-rendered result. The main R options are `chromote` and `RSelenium`; Python users typically reach for `playwright` or `selenium`. We will not cover these in this course, but the [`chromote` documentation](https://rstudio.github.io/chromote/) and [`RSelenium` documentation](https://docs.ropensci.org/RSelenium/) are good starting points.
+
+## Good practices for webscraping
+
+### Don't overload the server
+
+Scraping in a loop — requesting hundreds of pages in rapid succession — can look like a denial-of-service attack to the receiving server. Most servers enforce rate limits and will block your IP address if you exceed them. Even if they do not, sending a flood of requests is impolite and can degrade the experience for other users.
+
+**Add delays between requests.** The simplest approach is `Sys.sleep()` between loop iterations, as we used in the iTunes example. For more precise control, `httr2` provides `req_throttle()`, which enforces a maximum request rate across all requests to a given host:
+
+```{r}
+#| eval: false
+
+request("https://example.com/api") |>
+  req_throttle(rate = 10 / 60) # at most 10 requests per minute
+```
+
+**Respect `robots.txt`.** Most sites publish a `robots.txt` file at their root (e.g., `https://example.com/robots.txt`) specifying which paths automated crawlers may access. Honoring these rules is good practice and, in some jurisdictions, a legal requirement. The `polite` package wraps `httr2` and `rvest` with automatic `robots.txt` compliance.
+
+### Identify yourself
+
+By default, `httr2` sends a generic user agent string. Many server administrators appreciate knowing who is making requests — and some services block unidentified or suspicious agents. Set a descriptive `User-Agent` header:
+
+```{r}
+#| eval: false
+
+request("https://example.com") |>
+  req_headers(`User-Agent` = "ResearchProject/1.0 (contact@university.edu)")
+```
+
+### Write robust code
+
+Networks are unreliable. A scraper that crashes on the first failed request is useless for bulk data collection. Two tools help:
+
+**`req_retry()`** automatically retries a request after transient failures — status 429 (too many requests), 503 (service unavailable), or network errors — with optional exponential backoff:
+
+```{r}
+#| eval: false
+
+request("https://example.com") |>
+  req_retry(max_tries = 3, backoff = function(i) {
+    2^i
+  })
+```
+
+**`purrr::possibly()`** wraps any function so that instead of throwing an error on failure, it returns a default value (typically `NULL`). This lets a loop continue even when individual requests fail:
+
+```{r}
+#| eval: false
+
+safe_scrape <- possibly(
+  function(url) {
+    read_html(url) |> html_element("table") |> html_table()
+  },
+  otherwise = NULL
+)
+
+results <- map(urls, safe_scrape) |> compact() # compact() drops the NULLs
+```
+
+### Write idempotent code
+
+A well-written scraper can be interrupted and restarted without repeating work that already succeeded. This matters because scraping jobs are often long-running — a single run may take hours — and failures (network timeouts, rate-limit bans, power outages) are common. The solution is three habits used together: **save results as you go**, **log success and failure**, and **skip items you already have**.
+
+```{r}
+#| eval: false
+
+dir.create("data/raw", showWarnings = FALSE)
+log_file <- "data/scrape_log.csv"
+
+# Initialize log if it doesn't exist yet
+if (!file.exists(log_file)) {
+  tibble(url = urls, status = NA_character_) |> write_csv(log_file)
+}
+
+log <- read_csv(log_file, show_col_types = FALSE)
+
+for (url in urls) {
+  # Skip if already succeeded
+  if (isTRUE(log$status[log$url == url] == "ok")) {
+    next
+  }
+
+  result <- safe_scrape(url) # returns NULL on failure
+
+  if (is.null(result)) {
+    log$status[log$url == url] <- "failed"
+  } else {
+    out_file <- paste0("data/raw/", URLencode(url, repeated = TRUE), ".csv")
+    write_csv(result, out_file)
+    log$status[log$url == url] <- "ok"
+  }
+
+  write_csv(log, log_file) # persist log after every iteration
+  Sys.sleep(0.5)
+}
+
+# Load and combine all saved results
+results <- list.files("data/raw", pattern = "\\.csv$", full.names = TRUE) |>
+  map_dfr(read_csv, show_col_types = FALSE)
+```
+
+The key invariant is that the log is written to disk after every single iteration, not at the end of the loop. If the script crashes on iteration 47, iterations 1–46 are already saved and logged; restarting will skip them and resume from iteration 47.
