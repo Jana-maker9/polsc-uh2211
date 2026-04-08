@@ -8,6 +8,7 @@ title: "Lecture 18-19: Webscrapping"
 
 library(tidyverse)
 library(httr2)
+library(jsonlite)
 library(rvest)
 ```
 
@@ -107,7 +108,7 @@ A status of 200 means success. Let's look at the response body:
 ```{r}
 #| label: itunes-inspect
 
-resp |> resp_body_string()
+# resp |> resp_body_string()
 ```
 
 The body is a named list with two elements: `resultCount` (how many records were returned) and `results` (a list where each element is one track). Each track is itself a list of fields — we saw the field names in the JSON example above.
@@ -117,6 +118,9 @@ The body is a named list with two elements: `resultCount` (how many records were
 ```{r}
 #| label: itunes-parse
 
+df <- fromJSON(resp |> resp_body_string())$results |>
+  as_tibble()
+df
 ```
 
 
