@@ -5,7 +5,6 @@ title: "Lecture 16: Data visualization"
 ```{r}
 #| label: setup
 #| echo: false
-
 suppressPackageStartupMessages(library(tidyverse))
 library(gapminder)
 ```

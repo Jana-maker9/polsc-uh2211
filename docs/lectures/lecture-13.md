@@ -280,7 +280,9 @@ took the treatment ($T_i = 1$) or not ($T_i = 0$). We can think of
 $Y_i(T_i)$: the subject’s temperature given her treatment status. Let’s
 say:
 
-$$Y_i(1) = 37^\circ C \quad \text{and} \quad Y_i(0) = 38^\circ C$$
+$$
+Y_i(1) = 37^\circ C \quad \text{and} \quad Y_i(0) = 38^\circ C
+$$
 
 The **treatment effect** of Advil on her body temperature is
 $Y_i(1) - Y_i(0) = -1^\circ C$.
@@ -357,7 +359,9 @@ only difference between them is whether they received the treatment.
 
 We want to estimate the ATE:
 
-$$ATE = \mathbb{E}[Y_i(1) - Y_i(0)]$$
+$$
+ATE = \mathbb{E}[Y_i(1) - Y_i(0)]
+$$
 
 We never observe $Y_i(1)$ and $Y_i(0)$ for the same individual
 simultaneously. But we can try to estimate $\mathbb{E}[Y_i(1)]$ and
@@ -374,32 +378,42 @@ people, so $\mathbb{E}[Y_i(1) \mid T_i = 1] > \mathbb{E}[Y_i(1)]$.
 With **random assignment**, however, treatment $T_i$ is independent of
 potential outcomes $(Y_i(1), Y_i(0))$:
 
-$$T_i \perp (Y_i(1), Y_i(0))$$
+$$
+T_i \perp (Y_i(1), Y_i(0))
+$$
 
 This is precisely the mathematical statement that treatment is
 uncorrelated with everything. And it has a decisive consequence:
 conditioning on $T_i$ tells us nothing about $Y_i(1)$ or $Y_i(0)$, so:
 
-$$\mathbb{E}[Y_i(1) \mid T_i = 1] = \mathbb{E}[Y_i(1)]
+$$
+\mathbb{E}[Y_i(1) \mid T_i = 1] = \mathbb{E}[Y_i(1)]
 \qquad \text{and} \qquad
-\mathbb{E}[Y_i(0) \mid T_i = 0] = \mathbb{E}[Y_i(0)]$$
+\mathbb{E}[Y_i(0) \mid T_i = 0] = \mathbb{E}[Y_i(0)]
+$$
 
 The treated group is a representative sample of the population for
 $Y_i(1)$, and the control group is a representative sample for $Y_i(0)$.
 *It is only because of this independence that* we can write:
 
-$$\mathbb{E}[Y_i(1) - Y_i(0)] = \mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = \mathbb{E}[Y_i(1) \mid T_i = 1] - \mathbb{E}[Y_i(0) \mid T_i = 0]$$
+$$
+\mathbb{E}[Y_i(1) - Y_i(0)] = \mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = \mathbb{E}[Y_i(1) \mid T_i = 1] - \mathbb{E}[Y_i(0) \mid T_i = 0]
+$$
 
 ### From expectations to sample averages
 
 By the **Law of Large Numbers**, with enough observations, sample
 averages converge to population expectations:
 
-$$\bar{Y}_1 = \frac{1}{n_1}\sum_{i:\, T_i=1} Y_i \approx \mathbb{E}[Y_i(1) \mid T_i = 1] = \mathbb{E}[Y_i(1)]$$
+$$
+\bar{Y}_1 = \frac{1}{n_1}\sum_{i:\, T_i=1} Y_i \approx \mathbb{E}[Y_i(1) \mid T_i = 1] = \mathbb{E}[Y_i(1)]
+$$
 
 Putting it all together:
 
-$$\widehat{ATE} = \bar{Y}_1 - \bar{Y}_0 \approx \mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = ATE$$
+$$
+\widehat{ATE} = \bar{Y}_1 - \bar{Y}_0 \approx \mathbb{E}[Y_i(1)] - \mathbb{E}[Y_i(0)] = ATE
+$$
 
 **The difference in sample means is a valid estimator of the ATE — only
 because of random assignment.**
@@ -466,7 +480,9 @@ signal race: stereotypically Black names (Lakisha, Jamal) or White names
 This is a genuine experiment: the name — and thus the race signal — was
 randomly assigned. So:
 
-$$T_i \perp (Y_i(1), Y_i(0))$$
+$$
+T_i \perp (Y_i(1), Y_i(0))
+$$
 
 The difference in callback rates between groups is therefore a valid
 causal estimate of the effect of race on employer callbacks.
