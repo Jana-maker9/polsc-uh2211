@@ -4,12 +4,11 @@ title: "Lecture 18-19: Webscrapping"
 
 ```{r}
 #| label: setup
-#| echo: false
 
 library(tidyverse)
-library(httr2)
-library(jsonlite)
-library(rvest)
+library(httr2) # make http requests and handle responses
+library(jsonlite) # convert JSON to R objects
+library(rvest) # HTML parsing: extract elements from a page and convert to R objects
 ```
 
 ## How does the web work?
@@ -129,6 +128,24 @@ df
 ```{r}
 #| label: itunes-clean
 
+df |>
+  mutate(
+    year = as.integer(substr(releaseDate, 1, 4)),
+    duration = trackTimeMillis / 1000 / 60
+  ) |>
+  select(year, duration) |>
+  group_by(year) |>
+  summarize(duration = mean(duration)) |>
+  ggplot(aes(year, duration)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Average track duration over time",
+    x = "Year",
+    y = "Duration (minutes)"
+  )
+
 ```
 
 #### Step 5: Scale up to multiple artists
@@ -138,12 +155,73 @@ One artist is suggestive; let's see whether the pattern holds more broadly by re
 ```{r}
 #| label: itunes-multi
 
-artists <- c("beyonce", "taylor swift", "drake", "adele", "ed sheeran")
+artists <- c(
+  "beyonce",
+  "taylor swift",
+  "drake",
+  "adele",
+  "ed sheeran",
+  "miles davis",
+  "john coltrane",
+  "bob dylan",
+  "madonna",
+  "prince"
+)
 
 ```
 
 ```{r}
 #| label: itunes-multi-plot
+
+# let's reuse the code from before, but wrap it in a function that takes an artist name as input
+# and returns a cleaned tibble of track durations by year
+
+itunes_req <- function(artist) {
+  Sys.sleep(0.5) # be polite and avoid rate limits
+  request("https://itunes.apple.com/search") |>
+    req_url_query(
+      term = artist,
+      media = "music",
+      entity = "song",
+      limit = 200
+    ) |>
+    req_perform() |>
+    resp_body_string() |>
+    fromJSON() |>
+    pluck("results") |>
+    as_tibble() |>
+    mutate(
+      artist = artist,
+      year = as.integer(substr(releaseDate, 1, 4)),
+      duration = trackTimeMillis / 1000 / 60
+    ) |>
+    select(artist, year, duration)
+}
+
+# CAREFUL: this will send 10 requests to the iTunes API, which may trigger rate limits if you run it repeatedly
+# make sure you only run this once, and consider saving the result to disk for future use
+
+pl <- map_dfr(artists, itunes_req)
+
+pl |>
+  # data cleaning: filter out years before the artist's debut
+  filter(!(artist == "adele" & year < 1995)) |>
+  filter(!(artist == "madonna" & year < 1975)) |>
+  filter(!(artist == "prince" & year < 1950)) |>
+  filter(!(artist == "prince" & year > 2016)) |>
+  filter(!(artist == "miles davis" & year > 1991)) |>
+  group_by(year, artist) |>
+  summarize(duration = mean(duration)) |>
+  ggplot(aes(year, duration)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~artist, ncol = 3, scale = "free") +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Average track duration over time",
+    x = "Year",
+    y = "Duration (minutes)"
+  )
 
 ```
 
