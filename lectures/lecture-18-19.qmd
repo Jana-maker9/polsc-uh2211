@@ -366,7 +366,7 @@ safe_scrape <- possibly(
 results <- map(urls, safe_scrape) |> compact() # compact() drops the NULLs
 ```
 
-### Write idempotent code
+### Your scraper should be able to be interrupted and restarted
 
 A well-written scraper can be interrupted and restarted without repeating work that already succeeded. This matters because scraping jobs are often long-running — a single run may take hours — and failures (network timeouts, rate-limit bans, power outages) are common. The solution is three habits used together: **save results as you go**, **log success and failure**, and **skip items you already have**.
 
@@ -378,14 +378,14 @@ log_file <- "data/scrape_log.csv"
 
 # Initialize log if it doesn't exist yet
 if (!file.exists(log_file)) {
-  tibble(url = urls, status = NA_character_) |> write_csv(log_file)
+  tibble(url = urls, status = as.characer(NA)) |> write_csv(log_file)
 }
 
 log <- read_csv(log_file, show_col_types = FALSE)
 
 for (url in urls) {
   # Skip if already succeeded
-  if (isTRUE(log$status[log$url == url] == "ok")) {
+  if (log$status[log$url == url] == "ok") {
     next
   }
 

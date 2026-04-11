@@ -200,14 +200,14 @@ df
        <chr>       <chr>    <int>        <int>      <int> <chr>      <chr>          
      1 track       song   1419227    626204707  626205222 Beyoncé    4 (Expanded Ed…
      2 track       song   1419227    261707051  261707067 Beyoncé    B'Day (Deluxe …
-     3 track       song   1419227    626204707  626205875 Beyoncé    4 (Expanded Ed…
-     4 track       song   1419227    626204707  626205216 Beyoncé    4 (Expanded Ed…
-     5 track       song   1419227    626204707  626205872 Beyoncé    4 (Expanded Ed…
-     6 track       song   1419227   1460430561 1460430756 Beyoncé    Lemonade       
+     3 track       song   1419227    626204707  626205216 Beyoncé    4 (Expanded Ed…
+     4 track       song   1419227    626204707  626205872 Beyoncé    4 (Expanded Ed…
+     5 track       song   1419227    626204707  626205875 Beyoncé    4 (Expanded Ed…
+     6 track       song   1419227    296016891  296016893 Beyoncé    I AM...SASHA F…
      7 track       song     15885    279724861  279724870 USHER      Love In This C…
-     8 track       song   1419227    296016891  296016893 Beyoncé    I AM...SASHA F…
+     8 track       song   1419227   1460430561 1460430756 Beyoncé    Lemonade       
      9 track       song   1419227    296016891  296016901 Beyoncé    I AM...SASHA F…
-    10 track       song   1419227    626204707  626205217 Beyoncé    4 (Expanded Ed…
+    10 track       song   1419227    296016891  296016902 Beyoncé    I AM...SASHA F…
     # ℹ 190 more rows
     # ℹ 28 more variables: trackName <chr>, collectionCensoredName <chr>,
     #   trackCensoredName <chr>, artistViewUrl <chr>, collectionViewUrl <chr>,
@@ -375,7 +375,7 @@ page
 ```
 
     {html_document}
-    <html class="client-nojs vector-feature-language-in-header-enabled vector-feature-language-in-main-menu-disabled vector-feature-language-in-main-page-header-disabled vector-feature-page-tools-pinned-disabled vector-feature-toc-pinned-clientpref-1 vector-feature-main-menu-pinned-disabled vector-feature-limited-width-clientpref-1 vector-feature-limited-width-content-enabled vector-feature-custom-font-size-clientpref-1 vector-feature-appearance-pinned-clientpref-1 skin-theme-clientpref-day vector-sticky-header-enabled wp25eastereggs-enable-clientpref-1 vector-toc-available skin-theme-clientpref-thumb-standard" lang="en" dir="ltr">
+    <html class="client-nojs vector-feature-language-in-header-enabled vector-feature-language-in-main-menu-disabled vector-feature-language-in-main-page-header-disabled vector-feature-page-tools-pinned-disabled vector-feature-toc-pinned-clientpref-1 vector-feature-main-menu-pinned-disabled vector-feature-limited-width-clientpref-1 vector-feature-limited-width-content-enabled vector-feature-custom-font-size-clientpref-1 vector-feature-appearance-pinned-clientpref-1 skin-theme-clientpref-day vector-sticky-header-enabled vector-toc-available skin-theme-clientpref-thumb-standard" lang="en" dir="ltr">
     [1] <head>\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8 ...
     [2] <body class="skin--responsive skin-vector skin-vector-search-vue mediawik ...
 
@@ -510,7 +510,7 @@ safe_scrape <- possibly(
 results <- map(urls, safe_scrape) |> compact() # compact() drops the NULLs
 ```
 
-### Write idempotent code
+### Your scraper should be able to be interrupted and restarted
 
 A well-written scraper can be interrupted and restarted without
 repeating work that already succeeded. This matters because scraping
@@ -525,14 +525,14 @@ log_file <- "data/scrape_log.csv"
 
 # Initialize log if it doesn't exist yet
 if (!file.exists(log_file)) {
-  tibble(url = urls, status = NA_character_) |> write_csv(log_file)
+  tibble(url = urls, status = as.characer(NA)) |> write_csv(log_file)
 }
 
 log <- read_csv(log_file, show_col_types = FALSE)
 
 for (url in urls) {
   # Skip if already succeeded
-  if (isTRUE(log$status[log$url == url] == "ok")) {
+  if (log$status[log$url == url] == "ok") {
     next
   }
 
