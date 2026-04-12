@@ -39,6 +39,19 @@ library(rvest) # HTML parsing: extract elements from a page and convert to R obj
 
         guess_encoding
 
+Web scraping gives you access to data at a scale that would be
+impossible to collect by hand. A few years ago, I scraped the results of
+every municipal election in Morocco — roughly 235,000 records spread
+across 1,300 towns and their sub-districts — in a matter of days. Doing
+the same work manually with a team of research assistants would have
+taken months and introduced far more error. But the project also taught
+me what happens when you scrape carelessly: the server eventually
+detected the volume of requests, geo-blocked access from outside
+Morocco, and added anti-scraping protections. The data is still there;
+we just can’t get it the same way anymore. The technical skills below
+are straightforward; the judgment about how to use them responsibly
+matters just as much.
+
 ## How does the web work?
 
 The internet has become one of the richest data sources available to
@@ -70,7 +83,9 @@ A request has four components:
     when scraping.
   - `POST`: send data *to* the server (e.g., submitting a login form or
     uploading a file). Some APIs require POST for write operations, but
-    most read-only APIs use GET.
+    most read-only APIs use GET. TODO: alude to other methods (PUT,
+    DELETE, etc.) used in REST APIs, but we won’t cover them in this
+    course
 - **Headers** — Metadata attached to the request, invisible to ordinary
   users. Common headers include `User-Agent` (identifying which software
   is making the request) and `Cookie` (session credentials for
@@ -84,7 +99,7 @@ A request has four components:
 The server’s reply has three parts:
 
 - **Status code** — A three-digit number summarizing what happened.
-  - `200 OK`: success.
+  - `200 OK`: success. TODO: add details
   - `4xx` codes mean *you* made an error: `400` (malformed request),
     `401` (authentication required), `403` (forbidden), `404` (not
     found).
@@ -158,7 +173,7 @@ resp
     GET https://itunes.apple.com/search?term=beyonce&media=music&entity=song&limit=200
     Status: 200 OK
     Content-Type: text/javascript
-    Body: In memory (308114 bytes)
+    Body: In memory (307905 bytes)
 
 `request()` builds a request object. `req_url_query()` attaches query
 parameters as key-value pairs — no manual URL construction needed.
@@ -166,7 +181,10 @@ parameters as key-value pairs — no manual URL construction needed.
 
 How do we know which endpoints and query parameters to use? The API
 documentation is the best source. For iTunes, see [the official
-docs](https://performance-partners.apple.com/search-api).
+docs](https://performance-partners.apple.com/search-api). The
+`entity = "song"` parameter tells the API to return individual tracks;
+without it you would also get albums, music videos, and other media
+types mixed into the results.
 
 #### Step 2: Inspect the response
 
@@ -176,9 +194,23 @@ resp |> resp_status()
 
     [1] 200
 
-A status of 200 means success. Let’s look at the response body:
+A status of 200 means success. Before you do anything else with the
+response, consider saving the raw body to disk:
 
 ``` r
+write_lines(resp |> resp_body_string(), "data/raw_response.json")
+```
+
+Requests are the expensive part — they count against rate limits, cost
+money on pay-per-call APIs, and risk triggering a ban if you repeat
+them. Parsing is cheap and you can redo it as many times as you like.
+Storing the raw response locally means a bug in your parsing code does
+not force you to re-hit the server.
+
+Let’s look at the response body:
+
+``` r
+# not run because the body is long and messy, but you can run this to see the raw JSON text
 # resp |> resp_body_string()
 ```
 
@@ -199,15 +231,15 @@ df
        wrapperType kind  artistId collectionId    trackId artistName collectionName 
        <chr>       <chr>    <int>        <int>      <int> <chr>      <chr>          
      1 track       song   1419227    626204707  626205222 Beyoncé    4 (Expanded Ed…
-     2 track       song   1419227    261707051  261707067 Beyoncé    B'Day (Deluxe …
-     3 track       song   1419227    626204707  626205216 Beyoncé    4 (Expanded Ed…
-     4 track       song   1419227    626204707  626205872 Beyoncé    4 (Expanded Ed…
-     5 track       song   1419227    626204707  626205875 Beyoncé    4 (Expanded Ed…
-     6 track       song   1419227    296016891  296016893 Beyoncé    I AM...SASHA F…
-     7 track       song     15885    279724861  279724870 USHER      Love In This C…
-     8 track       song   1419227   1460430561 1460430756 Beyoncé    Lemonade       
+     2 track       song   1419227    626204707  626205875 Beyoncé    4 (Expanded Ed…
+     3 track       song   1419227    261707051  261707067 Beyoncé    B'Day (Deluxe …
+     4 track       song   1419227    626204707  626205216 Beyoncé    4 (Expanded Ed…
+     5 track       song   1419227    626204707  626205872 Beyoncé    4 (Expanded Ed…
+     6 track       song   1419227   1460430561 1460430756 Beyoncé    Lemonade       
+     7 track       song   1419227    296016891  296016893 Beyoncé    I AM...SASHA F…
+     8 track       song     15885    279724861  279724870 USHER      Love In This C…
      9 track       song   1419227    296016891  296016901 Beyoncé    I AM...SASHA F…
-    10 track       song   1419227    296016891  296016902 Beyoncé    I AM...SASHA F…
+    10 track       song   1419227    626204707  626205217 Beyoncé    4 (Expanded Ed…
     # ℹ 190 more rows
     # ℹ 28 more variables: trackName <chr>, collectionCensoredName <chr>,
     #   trackCensoredName <chr>, artistViewUrl <chr>, collectionViewUrl <chr>,
@@ -359,6 +391,31 @@ patterns that match elements by their tag, class, or identifier:
 The `rvest` package provides a clean interface for fetching pages and
 navigating their structure.
 
+### Finding the right selector
+
+Before writing any scraping code you need to know which selector to use.
+Browser developer tools are the fastest way to find out.
+
+**Opening DevTools**: right-click any element on the page and choose
+*Inspect*, or press Shift-Ctrl-I (Windows/Linux) or Cmd-Option-I (Mac).
+This opens a panel showing the live HTML of the page.
+
+**Inspector tab**: hover over elements in the HTML tree and the
+corresponding element highlights on the page (and vice versa). This lets
+you confirm you are targeting the right node. Once you have found it,
+right-click the element in the Inspector → *Copy* → *Copy selector* to
+get a CSS selector automatically. Chrome’s generated selectors are often
+overly specific (long chains of tags and pseudo-class indices); simplify
+them — `table.wikitable` is more robust than
+`body > div#content > table:nth-child(3)`.
+
+**Network tab**: every HTTP request the page makes is listed here,
+including background requests for data. If the content you want does not
+appear in the raw HTML (a common sign that JavaScript is rendering it),
+check the Network tab — you may find that the page is actually calling
+an internal API, in which case you can call that API directly instead of
+scraping HTML.
+
 ### Example: Wikipedia’s highest-grossing films
 
 Wikipedia’s list of highest-grossing films is published as a `wikitable`
@@ -414,7 +471,33 @@ handling the row-and-column structure for us.
 
 #### Step 3: Clean the data
 
+``` r
+films <- films_raw |>
+  select(title = `Title`, year = `Year`, gross = `Worldwide gross`) |>
+  mutate(
+    gross = parse_number(gross)
+  )
+```
+
 #### Step 4: Analyze
+
+``` r
+ggplot(films, aes(x = year, y = gross)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(
+    labels = scales::dollar_format(scale = 1e-9, suffix = "bn")
+  ) +
+  labs(
+    title = "Box-office ceiling over time",
+    x = "Year",
+    y = "Worldwide gross (USD)"
+  )
+```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](lecture-18-19_files/figure-commonmark/wiki-plot-1.png)
 
 This comparison is not inflation-adjusted, so it is biased toward more
 recent films — a dollar in 1994 is worth about twice a dollar today.
@@ -433,12 +516,10 @@ rendering is the likely cause.
 
 The solution is a **headless browser** — a full web browser that runs
 without a visible window, executes JavaScript, and lets you extract the
-fully-rendered result. The main R options are `chromote` and
-`RSelenium`; Python users typically reach for `playwright` or
-`selenium`. We will not cover these in this course, but the [`chromote`
-documentation](https://rstudio.github.io/chromote/) and [`RSelenium`
-documentation](https://docs.ropensci.org/RSelenium/) are good starting
-points.
+fully-rendered result. The main R option is `chromote`. We will not
+cover it in this course, but the [`chromote`
+documentation](https://rstudio.github.io/chromote/) is a good starting
+point.
 
 ## Good practices for webscraping
 
@@ -459,13 +540,6 @@ maximum request rate across all requests to a given host:
 request("https://example.com/api") |>
   req_throttle(rate = 10 / 60) # at most 10 requests per minute
 ```
-
-**Respect `robots.txt`.** Most sites publish a `robots.txt` file at
-their root (e.g., `https://example.com/robots.txt`) specifying which
-paths automated crawlers may access. Honoring these rules is good
-practice and, in some jurisdictions, a legal requirement. The `polite`
-package wraps `httr2` and `rvest` with automatic `robots.txt`
-compliance.
 
 ### Identify yourself
 
@@ -495,11 +569,37 @@ request("https://example.com") |>
   })
 ```
 
+The `backoff` function controls the wait between attempts: with `2^i`,
+the first retry waits 2 seconds, the second 4 seconds, the third 8
+seconds. This gives the server time to recover rather than hammering it
+in quick succession.
+
+Note that not all failures are worth retrying. Status 404 (not found) is
+a permanent failure — the resource does not exist and retrying will not
+help. Status 429 and 503 are temporary — the server is busy or
+rate-limiting you, and a short wait often resolves them. `req_retry()`
+handles this distinction automatically by default.
+
 **`purrr::possibly()`** wraps any function so that instead of throwing
 an error on failure, it returns a default value (typically `NULL`). This
-lets a loop continue even when individual requests fail:
+lets a loop continue even when individual requests fail. The philosophy:
+some errors you *want* to crash on — a bug in your own code, for
+instance — but others you want to absorb and move on from, like a single
+bad URL in a list of 500. `possibly()` is the tool for the second
+category.
 
 ``` r
+addition <- function(a, b) {
+  a + b
+}
+
+safe_addition <- possibly(addition, otherwise = NULL)
+
+addition(1, 2)
+addition(1, "a")
+safe_addition(1, 2)
+safe_addition(1, "a")
+
 safe_scrape <- possibly(
   function(url) {
     read_html(url) |> html_element("table") |> html_table()
@@ -508,6 +608,27 @@ safe_scrape <- possibly(
 )
 
 results <- map(urls, safe_scrape) |> compact() # compact() drops the NULLs
+```
+
+`possibly()` is a convenience wrapper around R’s base `tryCatch()`,
+which gives you finer-grained control — you can handle errors, warnings,
+and messages separately, or inspect the error message to decide what to
+do. For most scraping purposes `possibly()` is enough, but `tryCatch()`
+is useful when you want to log the specific error or take different
+actions on different failure types:
+
+``` r
+safe_scrape_verbose <- function(url) {
+  tryCatch(
+    {
+      read_html(url) |> html_element("table") |> html_table()
+    },
+    error = function(e) {
+      message("Failed on ", url, ": ", conditionMessage(e))
+      NULL
+    }
+  )
+}
 ```
 
 ### Your scraper should be able to be interrupted and restarted
@@ -519,7 +640,23 @@ jobs are often long-running — a single run may take hours — and failures
 solution is three habits used together: **save results as you go**,
 **log success and failure**, and **skip items you already have**.
 
+Think of it as a two-column spreadsheet with a URL column and a status
+column (initially empty). Before each request you check the status: if
+it is already “ok”, skip it. After each request you write the result to
+disk and update the status to “ok” or “failed” — immediately, not at the
+end of the loop. If the script crashes halfway through, every completed
+URL is already recorded and the next run will pick up exactly where the
+last one left off.
+
 ``` r
+urls <- c(
+  "https://example.com/data1",
+  "https://example.com/data2",
+  "https://example.com/data3",
+  "https://example.com/data4",
+  "https://example.com/data5"
+)
+
 dir.create("data/raw", showWarnings = FALSE)
 log_file <- "data/scrape_log.csv"
 
@@ -536,6 +673,10 @@ for (url in urls) {
     next
   }
 
+  # use a safe scraping function to make sure that
+  # 1. you retry a few times upon failure
+  # 2. potential errors don't crash the entire loop
+  # -> instead, you just move on to the next URL
   result <- safe_scrape(url) # returns NULL on failure
 
   if (is.null(result)) {
@@ -555,7 +696,29 @@ results <- list.files("data/raw", pattern = "\\.csv$", full.names = TRUE) |>
   map_dfr(read_csv, show_col_types = FALSE)
 ```
 
-The key invariant is that the log is written to disk after every single
-iteration, not at the end of the loop. If the script crashes on
-iteration 47, iterations 1–46 are already saved and logged; restarting
-will skip them and resume from iteration 47.
+The important point is that the log and the data are written to disk
+after every single iteration, not at the end of the loop. If the script
+crashes on iteration 3, iterations 1–2 are already saved and logged;
+restarting will skip them and resume from iteration 3.
+
+### Cache your results locally
+
+Once a scraper has run successfully and the data is on disk, protect it
+from accidental re-runs. The simplest guard is a file existence check at
+the top of the data-collection block:
+
+``` r
+results_file <- "data/results.csv"
+
+if (!file.exists(results_file)) {
+  # run the scraper and save results
+  results <- map(urls, safe_scrape) |> compact() |> bind_rows()
+  write_csv(results, results_file)
+}
+
+results <- read_csv(results_file, show_col_types = FALSE)
+```
+
+This way, re-running or re-rendering your document reads from the saved
+file instead of re-issuing requests. If you genuinely need fresh data,
+delete the file and re-run.

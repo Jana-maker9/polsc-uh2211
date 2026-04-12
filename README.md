@@ -19,6 +19,7 @@ Lecture notes for course POLSC-UH2211
 - [Lecture 15](/docs/lectures/lecture-15.md)
 - [Lecture 16](/docs/lectures/lecture-16.md)
 - [Lecture 17](/docs/lectures/lecture-17.md)
+- [Lecture 18-19](/docs/lectures/lecture-18-19.md)
 
 ## Homework assignments
 
