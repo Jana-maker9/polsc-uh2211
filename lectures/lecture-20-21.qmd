@@ -367,7 +367,7 @@ list(
 # Limitations
 
 - Measurement error: our measures of news-watching is imperfect (internet instead of TV)
-- Missing data: we have a lot of missing data for 
+- Missing data: we should have checked looked into missingness (e.g. use explicity NAs).
 - Causality
 
 # Causality
