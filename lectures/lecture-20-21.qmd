@@ -180,8 +180,10 @@ $$
 - $\alpha + \beta_1$: approves of US, after.
 - $\alpha + \beta_2$: disapproves of US, before.
 - $\alpha + \beta_1 + \beta_2 + \beta_3$: disapproves of US, after.
+- $\beta_1$: change in approval after annexation for those who approve of the US.
+- $\beta_1 + \beta_3$: change in approval after annexation for those who disapprove of the US.
 - $\beta_3$: extra change in approval after annexation for those who disapprove of the US.
-- If $\beta_3 > 0$, resentful respondents rallied more around Putin after annexation.
+- If $\beta_3 > 0$, resentful respondents rallied more around Putin than non-resentful respondents after annexation.
 
 . . .
 
