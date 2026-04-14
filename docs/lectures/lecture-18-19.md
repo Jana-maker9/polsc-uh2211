@@ -1,0 +1,724 @@
+# Lecture 18-19: Webscrapping
+Romain Ferrali
+
+``` r
+library(tidyverse)
+```
+
+    ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+    ✔ dplyr     1.2.0     ✔ readr     2.2.0
+    ✔ forcats   1.0.1     ✔ stringr   1.6.0
+    ✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+    ✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+    ✔ purrr     1.2.1     
+    ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+    ✖ dplyr::filter() masks stats::filter()
+    ✖ dplyr::lag()    masks stats::lag()
+    ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+
+``` r
+library(httr2) # make http requests and handle responses
+library(jsonlite) # convert JSON to R objects
+```
+
+
+    Attaching package: 'jsonlite'
+
+    The following object is masked from 'package:purrr':
+
+        flatten
+
+``` r
+library(rvest) # HTML parsing: extract elements from a page and convert to R objects
+```
+
+
+    Attaching package: 'rvest'
+
+    The following object is masked from 'package:readr':
+
+        guess_encoding
+
+Web scraping gives you access to data at a scale that would be
+impossible to collect by hand. A few years ago, I scraped the results of
+every municipal election in Morocco — roughly 235,000 records spread
+across 1,300 towns and their sub-districts — in a matter of days. Doing
+the same work manually with a team of research assistants would have
+taken months and introduced far more error. But the project also taught
+me what happens when you scrape carelessly: the server eventually
+detected the volume of requests, geo-blocked access from outside
+Morocco, and added anti-scraping protections. The data is still there;
+we just can’t get it the same way anymore. The technical skills below
+are straightforward; the judgment about how to use them responsibly
+matters just as much.
+
+## How does the web work?
+
+The internet has become one of the richest data sources available to
+social scientists. News archives, government documents, film databases,
+social media posts, song catalogues — nearly anything published online
+is, in principle, accessible to quantitative analysis. **Web scraping**
+is the practice of extracting that data programmatically: writing code
+to send requests to web servers and parsing the responses into
+structured data we can analyze in R.
+
+To scrape effectively, you need to understand the basic mechanics of web
+communication. Every interaction with the web is a request-response
+exchange between a **client** (your browser, or your R script) and a
+**server**.
+
+### Requests
+
+A request has four components:
+
+- **URL** — The address of the resource. It identifies the server
+  (`https://itunes.apple.com`) and the specific resource on that server
+  (`/search`). Optional *query parameters*, appended after a `?`, let
+  you filter or configure the request — for example,
+  `?term=beyonce&media=music&limit=50`.
+- **Method** — The operation you want to perform. The two you will
+  encounter:
+  - `GET`: retrieve data from the server. This is what your browser does
+    every time you visit a page, and what we will use almost exclusively
+    when scraping.
+  - `POST`: send data *to* the server (e.g., submitting a login form or
+    uploading a file). Some APIs require POST for write operations, but
+    most read-only APIs use GET. TODO: alude to other methods (PUT,
+    DELETE, etc.) used in REST APIs, but we won’t cover them in this
+    course
+- **Headers** — Metadata attached to the request, invisible to ordinary
+  users. Common headers include `User-Agent` (identifying which software
+  is making the request) and `Cookie` (session credentials for
+  authenticated sites).
+- **Body** — A payload sent alongside the request. Mostly used with POST
+  to transmit form data or structured data. GET requests typically have
+  no body.
+
+### Responses
+
+The server’s reply has three parts:
+
+- **Status code** — A three-digit number summarizing what happened.
+  - `200 OK`: success. TODO: add details
+  - `4xx` codes mean *you* made an error: `400` (malformed request),
+    `401` (authentication required), `403` (forbidden), `404` (not
+    found).
+  - `5xx` codes mean the *server* has a problem: `500` (internal server
+    error), `503` (service unavailable).
+- **Headers** — Metadata about the response: content type (`text/html`,
+  `application/json`), caching instructions, rate-limit counters.
+- **Body** — The actual content — an HTML page, a structured data
+  object, an image, a CSV file — whatever was requested.
+
+## Webscraping with APIs
+
+Many websites expose a structured data interface called an **Application
+Programming Interface (API)**. Rather than returning a full HTML page
+designed for browsers, an API returns data in a machine-readable format,
+almost always **JavaScript Object Notation (JSON)** — a plain-text
+structure built from nested key-value pairs.
+
+``` json
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "artistName": "Beyoncé",
+      "trackName": "Crazy in Love",
+      "releaseDate": "2003-06-24T07:00:00Z",
+      "trackTimeMillis": 235373,
+      "primaryGenreName": "R&B/Soul"
+    },
+    {
+      "artistName": "Beyoncé",
+      "trackName": "Halo",
+      "releaseDate": "2008-11-18T08:00:00Z",
+      "trackTimeMillis": 261493,
+      "primaryGenreName": "R&B/Soul"
+    }
+  ]
+}
+```
+
+When an API is available, prefer it over scraping raw HTML. APIs are
+more stable (they do not change when the site redesigns its visual
+layout), more efficient (you get only the data you need), and more
+legitimate (you are using the intended data access method).
+
+### Example: the iTunes Search API
+
+Apple provides a free, no-credentials-required search API for its music
+and media catalogue. Let’s use it to ask: **have popular songs gotten
+shorter over time?**
+
+We’ll search for a handful of well-known artists with long careers and
+compare average track duration across the years.
+
+#### Step 1: Send a request
+
+``` r
+resp <- request("https://itunes.apple.com/search") |>
+  req_url_query(
+    term = "beyonce",
+    media = "music",
+    entity = "song",
+    limit = 200
+  ) |>
+  req_perform()
+
+resp
+```
+
+    <httr2_response>
+    GET https://itunes.apple.com/search?term=beyonce&media=music&entity=song&limit=200
+    Status: 200 OK
+    Content-Type: text/javascript
+    Body: In memory (307905 bytes)
+
+`request()` builds a request object. `req_url_query()` attaches query
+parameters as key-value pairs — no manual URL construction needed.
+`req_perform()` sends the request and returns the response.
+
+How do we know which endpoints and query parameters to use? The API
+documentation is the best source. For iTunes, see [the official
+docs](https://performance-partners.apple.com/search-api). The
+`entity = "song"` parameter tells the API to return individual tracks;
+without it you would also get albums, music videos, and other media
+types mixed into the results.
+
+#### Step 2: Inspect the response
+
+``` r
+resp |> resp_status()
+```
+
+    [1] 200
+
+A status of 200 means success. Before you do anything else with the
+response, consider saving the raw body to disk:
+
+``` r
+write_lines(resp |> resp_body_string(), "data/raw_response.json")
+```
+
+Requests are the expensive part — they count against rate limits, cost
+money on pay-per-call APIs, and risk triggering a ban if you repeat
+them. Parsing is cheap and you can redo it as many times as you like.
+Storing the raw response locally means a bug in your parsing code does
+not force you to re-hit the server.
+
+Let’s look at the response body:
+
+``` r
+# not run because the body is long and messy, but you can run this to see the raw JSON text
+# resp |> resp_body_string()
+```
+
+The body is a named list with two elements: `resultCount` (how many
+records were returned) and `results` (a list where each element is one
+track). Each track is itself a list of fields — we saw the field names
+in the JSON example above.
+
+#### Step 3: Parse into a tibble
+
+``` r
+df <- fromJSON(resp |> resp_body_string())$results |>
+  as_tibble()
+df
+```
+
+    # A tibble: 200 × 35
+       wrapperType kind  artistId collectionId    trackId artistName collectionName 
+       <chr>       <chr>    <int>        <int>      <int> <chr>      <chr>          
+     1 track       song   1419227    626204707  626205222 Beyoncé    4 (Expanded Ed…
+     2 track       song   1419227    626204707  626205875 Beyoncé    4 (Expanded Ed…
+     3 track       song   1419227    261707051  261707067 Beyoncé    B'Day (Deluxe …
+     4 track       song   1419227    626204707  626205216 Beyoncé    4 (Expanded Ed…
+     5 track       song   1419227    626204707  626205872 Beyoncé    4 (Expanded Ed…
+     6 track       song   1419227   1460430561 1460430756 Beyoncé    Lemonade       
+     7 track       song   1419227    296016891  296016893 Beyoncé    I AM...SASHA F…
+     8 track       song     15885    279724861  279724870 USHER      Love In This C…
+     9 track       song   1419227    296016891  296016901 Beyoncé    I AM...SASHA F…
+    10 track       song   1419227    626204707  626205217 Beyoncé    4 (Expanded Ed…
+    # ℹ 190 more rows
+    # ℹ 28 more variables: trackName <chr>, collectionCensoredName <chr>,
+    #   trackCensoredName <chr>, artistViewUrl <chr>, collectionViewUrl <chr>,
+    #   trackViewUrl <chr>, previewUrl <chr>, artworkUrl30 <chr>,
+    #   artworkUrl60 <chr>, artworkUrl100 <chr>, collectionPrice <dbl>,
+    #   trackPrice <dbl>, releaseDate <chr>, collectionExplicitness <chr>,
+    #   trackExplicitness <chr>, discCount <int>, discNumber <int>, …
+
+#### Step 4: Clean and analyze
+
+``` r
+df |>
+  mutate(
+    year = as.integer(substr(releaseDate, 1, 4)),
+    duration = trackTimeMillis / 1000 / 60
+  ) |>
+  select(year, duration) |>
+  group_by(year) |>
+  summarize(duration = mean(duration)) |>
+  ggplot(aes(year, duration)) +
+  geom_line() +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Average track duration over time",
+    x = "Year",
+    y = "Duration (minutes)"
+  )
+```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](lecture-18-19_files/figure-commonmark/itunes-clean-1.png)
+
+#### Step 5: Scale up to multiple artists
+
+One artist is suggestive; let’s see whether the pattern holds more
+broadly by repeating the search for several artists and combining the
+results.
+
+``` r
+artists <- c(
+  "beyonce",
+  "taylor swift",
+  "drake",
+  "adele",
+  "ed sheeran",
+  "miles davis",
+  "john coltrane",
+  "bob dylan",
+  "madonna",
+  "prince"
+)
+```
+
+``` r
+# let's reuse the code from before, but wrap it in a function that takes an artist name as input
+# and returns a cleaned tibble of track durations by year
+
+itunes_req <- function(artist) {
+  Sys.sleep(0.5) # be polite and avoid rate limits
+  request("https://itunes.apple.com/search") |>
+    req_url_query(
+      term = artist,
+      media = "music",
+      entity = "song",
+      limit = 200
+    ) |>
+    req_perform() |>
+    resp_body_string() |>
+    fromJSON() |>
+    pluck("results") |>
+    as_tibble() |>
+    mutate(
+      artist = artist,
+      year = as.integer(substr(releaseDate, 1, 4)),
+      duration = trackTimeMillis / 1000 / 60
+    ) |>
+    select(artist, year, duration)
+}
+
+# CAREFUL: this will send 10 requests to the iTunes API, which may trigger rate limits if you run it repeatedly
+# make sure you only run this once, and consider saving the result to disk for future use
+
+pl <- map_dfr(artists, itunes_req)
+
+pl |>
+  # data cleaning: filter out years before the artist's debut
+  filter(!(artist == "adele" & year < 1995)) |>
+  filter(!(artist == "madonna" & year < 1975)) |>
+  filter(!(artist == "prince" & year < 1950)) |>
+  filter(!(artist == "prince" & year > 2016)) |>
+  filter(!(artist == "miles davis" & year > 1991)) |>
+  group_by(year, artist) |>
+  summarize(duration = mean(duration)) |>
+  ggplot(aes(year, duration)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~artist, ncol = 3, scale = "free") +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Average track duration over time",
+    x = "Year",
+    y = "Duration (minutes)"
+  )
+```
+
+    `summarise()` has regrouped the output.
+    `geom_smooth()` using formula = 'y ~ x'
+    ℹ Summaries were computed grouped by year and artist.
+    ℹ Output is grouped by year.
+    ℹ Use `summarise(.groups = "drop_last")` to silence this message.
+    ℹ Use `summarise(.by = c(year, artist))` for per-operation grouping
+      (`?dplyr::dplyr_by`) instead.
+
+![](lecture-18-19_files/figure-commonmark/itunes-multi-plot-1.png)
+
+## Webscraping with HTML
+
+Not every website offers an API. Often the data we want lives directly
+in a webpage — encoded in the **HyperText Markup Language (HTML)** that
+browsers parse and render visually. We can still extract it
+programmatically by navigating the HTML structure.
+
+HTML is a tree of nested **elements**. Each element has a tag name,
+optional attributes, and content. A simple table looks like this:
+
+``` html
+<table>
+  <tr>
+    <th>Title</th>     <th>Year</th>  <th>Gross</th>
+  </tr>
+  <tr>
+    <td>Avengers: Endgame</td>  <td>2019</td>  <td>$2,799,439,100</td>
+  </tr>
+</table>
+```
+
+To extract specific elements from a page, we use **CSS selectors** —
+patterns that match elements by their tag, class, or identifier:
+
+| Selector          | Matches                                    |
+|-------------------|--------------------------------------------|
+| `table`           | Any `<table>` element                      |
+| `.wikitable`      | Any element with `class="wikitable"`       |
+| `#summary`        | The element with `id="summary"`            |
+| `table.wikitable` | A `<table>` element with class `wikitable` |
+
+The `rvest` package provides a clean interface for fetching pages and
+navigating their structure.
+
+### Finding the right selector
+
+Before writing any scraping code you need to know which selector to use.
+Browser developer tools are the fastest way to find out.
+
+**Opening DevTools**: right-click any element on the page and choose
+*Inspect*, or press Shift-Ctrl-I (Windows/Linux) or Cmd-Option-I (Mac).
+This opens a panel showing the live HTML of the page.
+
+**Inspector tab**: hover over elements in the HTML tree and the
+corresponding element highlights on the page (and vice versa). This lets
+you confirm you are targeting the right node. Once you have found it,
+right-click the element in the Inspector → *Copy* → *Copy selector* to
+get a CSS selector automatically. Chrome’s generated selectors are often
+overly specific (long chains of tags and pseudo-class indices); simplify
+them — `table.wikitable` is more robust than
+`body > div#content > table:nth-child(3)`.
+
+**Network tab**: every HTTP request the page makes is listed here,
+including background requests for data. If the content you want does not
+appear in the raw HTML (a common sign that JavaScript is rendering it),
+check the Network tab — you may find that the page is actually calling
+an internal API, in which case you can call that API directly instead of
+scraping HTML.
+
+### Example: Wikipedia’s highest-grossing films
+
+Wikipedia’s list of highest-grossing films is published as a `wikitable`
+— a consistently-structured HTML table that parses cleanly. Let’s scrape
+it and ask: **has the box-office ceiling risen over time?**
+
+#### Step 1: Fetch and parse the page
+
+``` r
+page <- read_html(
+  "https://en.wikipedia.org/wiki/List_of_highest-grossing_films"
+)
+page
+```
+
+    {html_document}
+    <html class="client-nojs vector-feature-language-in-header-enabled vector-feature-language-in-main-menu-disabled vector-feature-language-in-main-page-header-disabled vector-feature-page-tools-pinned-disabled vector-feature-toc-pinned-clientpref-1 vector-feature-main-menu-pinned-disabled vector-feature-limited-width-clientpref-1 vector-feature-limited-width-content-enabled vector-feature-custom-font-size-clientpref-1 vector-feature-appearance-pinned-clientpref-1 skin-theme-clientpref-day vector-sticky-header-enabled vector-toc-available skin-theme-clientpref-thumb-standard" lang="en" dir="ltr">
+    [1] <head>\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8 ...
+    [2] <body class="skin--responsive skin-vector skin-vector-search-vue mediawik ...
+
+`read_html()` fetches the page over HTTP and parses the HTML into a tree
+we can navigate. The output tells us how many nodes the document
+contains — we don’t read those directly; we use selectors instead.
+
+#### Step 2: Find the table
+
+``` r
+films_raw <- page |>
+  html_element("table.wikitable") |>
+  html_table()
+
+films_raw
+```
+
+    # A tibble: 50 × 6
+        Rank Peak  Title                        `Worldwide gross`  Year Ref         
+       <int> <chr> <chr>                        <chr>             <int> <chr>       
+     1     1 1     Avatar                       $2,923,710,708     2009 [# 1][# 2]  
+     2     2 1     Avengers: Endgame            $2,797,501,328     2019 [# 3][# 4]  
+     3     3 3     Avatar: The Way of Water     $2,334,484,620     2022 [# 5][# 6]  
+     4     4 1     Titanic                      T$2,257,906,828    1997 [# 7][# 8]  
+     5     5 5     Ne Zha 2                     NZ$2,215,690,000   2025 [# 9][# 10] 
+     6     6 3     Star Wars: The Force Awakens $2,068,223,624     2015 [# 11][# 12]
+     7     7 4     Avengers: Infinity War       $2,048,359,754     2018 [# 13][# 14]
+     8     8 6     Spider-Man: No Way Home      SM$1,922,598,800   2021 [# 15][# 16]
+     9     9 9     Zootopia 2 †                 $1,866,647,950     2025 [# 17]      
+    10    10 8     Inside Out 2                 $1,698,863,816     2024 [# 18][# 19]
+    # ℹ 40 more rows
+
+`html_element()` finds the first element matching the selector.
+`html_table()` converts a `<table>` node directly into a tibble,
+handling the row-and-column structure for us.
+
+#### Step 3: Clean the data
+
+``` r
+films <- films_raw |>
+  select(title = `Title`, year = `Year`, gross = `Worldwide gross`) |>
+  mutate(
+    gross = parse_number(gross)
+  )
+```
+
+#### Step 4: Analyze
+
+``` r
+ggplot(films, aes(x = year, y = gross)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(
+    labels = scales::dollar_format(scale = 1e-9, suffix = "bn")
+  ) +
+  labs(
+    title = "Box-office ceiling over time",
+    x = "Year",
+    y = "Worldwide gross (USD)"
+  )
+```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+![](lecture-18-19_files/figure-commonmark/wiki-plot-1.png)
+
+This comparison is not inflation-adjusted, so it is biased toward more
+recent films — a dollar in 1994 is worth about twice a dollar today.
+Correcting for inflation would require merging in a historical price
+index; the scraping is the easy part.
+
+## Webscraping with a headless browser
+
+The two approaches above cover most scraping scenarios, but both break
+down on one type of site: pages where the content is **rendered by
+JavaScript** in the browser rather than included in the initial HTML.
+Modern single-page applications, live dashboards, and some search
+results fall into this category. If you fetch a page and find that the
+table visible in your browser is absent from the raw HTML, JavaScript
+rendering is the likely cause.
+
+The solution is a **headless browser** — a full web browser that runs
+without a visible window, executes JavaScript, and lets you extract the
+fully-rendered result. The main R option is `chromote`. We will not
+cover it in this course, but the [`chromote`
+documentation](https://rstudio.github.io/chromote/) is a good starting
+point.
+
+## Good practices for webscraping
+
+### Don’t overload the server
+
+Scraping in a loop — requesting hundreds of pages in rapid succession —
+can look like a denial-of-service attack to the receiving server. Most
+servers enforce rate limits and will block your IP address if you exceed
+them. Even if they do not, sending a flood of requests is impolite and
+can degrade the experience for other users.
+
+**Add delays between requests.** The simplest approach is `Sys.sleep()`
+between loop iterations, as we used in the iTunes example. For more
+precise control, `httr2` provides `req_throttle()`, which enforces a
+maximum request rate across all requests to a given host:
+
+``` r
+request("https://example.com/api") |>
+  req_throttle(rate = 10 / 60) # at most 10 requests per minute
+```
+
+### Identify yourself
+
+By default, `httr2` sends a generic user agent string. Many server
+administrators appreciate knowing who is making requests — and some
+services block unidentified or suspicious agents. Set a descriptive
+`User-Agent` header:
+
+``` r
+request("https://example.com") |>
+  req_headers(`User-Agent` = "ResearchProject/1.0 (contact@university.edu)")
+```
+
+### Write robust code
+
+Networks are unreliable. A scraper that crashes on the first failed
+request is useless for bulk data collection. Two tools help:
+
+**`req_retry()`** automatically retries a request after transient
+failures — status 429 (too many requests), 503 (service unavailable), or
+network errors — with optional exponential backoff:
+
+``` r
+request("https://example.com") |>
+  req_retry(max_tries = 3, backoff = function(i) {
+    2^i
+  })
+```
+
+The `backoff` function controls the wait between attempts: with `2^i`,
+the first retry waits 2 seconds, the second 4 seconds, the third 8
+seconds. This gives the server time to recover rather than hammering it
+in quick succession.
+
+Note that not all failures are worth retrying. Status 404 (not found) is
+a permanent failure — the resource does not exist and retrying will not
+help. Status 429 and 503 are temporary — the server is busy or
+rate-limiting you, and a short wait often resolves them. `req_retry()`
+handles this distinction automatically by default.
+
+**`purrr::possibly()`** wraps any function so that instead of throwing
+an error on failure, it returns a default value (typically `NULL`). This
+lets a loop continue even when individual requests fail. The philosophy:
+some errors you *want* to crash on — a bug in your own code, for
+instance — but others you want to absorb and move on from, like a single
+bad URL in a list of 500. `possibly()` is the tool for the second
+category.
+
+``` r
+addition <- function(a, b) {
+  a + b
+}
+
+safe_addition <- possibly(addition, otherwise = NULL)
+
+addition(1, 2)
+addition(1, "a")
+safe_addition(1, 2)
+safe_addition(1, "a")
+
+safe_scrape <- possibly(
+  function(url) {
+    read_html(url) |> html_element("table") |> html_table()
+  },
+  otherwise = NULL
+)
+
+results <- map(urls, safe_scrape) |> compact() # compact() drops the NULLs
+```
+
+`possibly()` is a convenience wrapper around R’s base `tryCatch()`,
+which gives you finer-grained control — you can handle errors, warnings,
+and messages separately, or inspect the error message to decide what to
+do. For most scraping purposes `possibly()` is enough, but `tryCatch()`
+is useful when you want to log the specific error or take different
+actions on different failure types:
+
+``` r
+safe_scrape_verbose <- function(url) {
+  tryCatch(
+    {
+      read_html(url) |> html_element("table") |> html_table()
+    },
+    error = function(e) {
+      message("Failed on ", url, ": ", conditionMessage(e))
+      NULL
+    }
+  )
+}
+```
+
+### Your scraper should be able to be interrupted and restarted
+
+A well-written scraper can be interrupted and restarted without
+repeating work that already succeeded. This matters because scraping
+jobs are often long-running — a single run may take hours — and failures
+(network timeouts, rate-limit bans, power outages) are common. The
+solution is three habits used together: **save results as you go**,
+**log success and failure**, and **skip items you already have**.
+
+Think of it as a two-column spreadsheet with a URL column and a status
+column (initially empty). Before each request you check the status: if
+it is already “ok”, skip it. After each request you write the result to
+disk and update the status to “ok” or “failed” — immediately, not at the
+end of the loop. If the script crashes halfway through, every completed
+URL is already recorded and the next run will pick up exactly where the
+last one left off.
+
+``` r
+urls <- c(
+  "https://example.com/data1",
+  "https://example.com/data2",
+  "https://example.com/data3",
+  "https://example.com/data4",
+  "https://example.com/data5"
+)
+
+dir.create("data/raw", showWarnings = FALSE)
+log_file <- "data/scrape_log.csv"
+
+# Initialize log if it doesn't exist yet
+if (!file.exists(log_file)) {
+  tibble(url = urls, status = as.characer(NA)) |> write_csv(log_file)
+}
+
+log <- read_csv(log_file, show_col_types = FALSE)
+
+for (url in urls) {
+  # Skip if already succeeded
+  if (log$status[log$url == url] == "ok") {
+    next
+  }
+
+  # use a safe scraping function to make sure that
+  # 1. you retry a few times upon failure
+  # 2. potential errors don't crash the entire loop
+  # -> instead, you just move on to the next URL
+  result <- safe_scrape(url) # returns NULL on failure
+
+  if (is.null(result)) {
+    log$status[log$url == url] <- "failed"
+  } else {
+    out_file <- paste0("data/raw/", URLencode(url, repeated = TRUE), ".csv")
+    write_csv(result, out_file)
+    log$status[log$url == url] <- "ok"
+  }
+
+  write_csv(log, log_file) # persist log after every iteration
+  Sys.sleep(0.5)
+}
+
+# Load and combine all saved results
+results <- list.files("data/raw", pattern = "\\.csv$", full.names = TRUE) |>
+  map_dfr(read_csv, show_col_types = FALSE)
+```
+
+The important point is that the log and the data are written to disk
+after every single iteration, not at the end of the loop. If the script
+crashes on iteration 3, iterations 1–2 are already saved and logged;
+restarting will skip them and resume from iteration 3.
+
+### Cache your results locally
+
+Once a scraper has run successfully and the data is on disk, protect it
+from accidental re-runs. The simplest guard is a file existence check at
+the top of the data-collection block:
+
+``` r
+results_file <- "data/results.csv"
+
+if (!file.exists(results_file)) {
+  # run the scraper and save results
+  results <- map(urls, safe_scrape) |> compact() |> bind_rows()
+  write_csv(results, results_file)
+}
+
+results <- read_csv(results_file, show_col_types = FALSE)
+```
+
+This way, re-running or re-rendering your document reads from the saved
+file instead of re-issuing requests. If you genuinely need fresh data,
+delete the file and re-run.

@@ -18,11 +18,14 @@ Lecture notes for course POLSC-UH2211
 - [Lecture 14](/docs/lectures/lecture-14.md)
 - [Lecture 15](/docs/lectures/lecture-15.md)
 - [Lecture 16](/docs/lectures/lecture-16.md)
+- [Lecture 17](/docs/lectures/lecture-17.md)
+- [Lecture 18-19](/docs/lectures/lecture-18-19.md)
 
 ## Homework assignments
 
 - [Homework 1](/docs/homework/homework-1.md)
 - [Homework 2](/docs/homework/homework-2.md)
+- [Homework 3](/docs/homework/homework-3.md)
 - [Practicum](docs//homework/practicum.md)
 
 ## Getting started

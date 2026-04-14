@@ -1,0 +1,386 @@
+---
+title: "Lecture 20-21: Time series"
+format: revealjs
+---
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+library(haven)
+library(modelsummary)
+
+df <- bind_rows(
+  read_dta("./data/practicum-jan-2014.dta") |> mutate(after = 0),
+  read_dta("./data/practicum-may-2014.dta") |> mutate(after = 1)
+) |>
+  # data cleaning
+  mutate(
+    approval = putinapprov,
+    int_yes = 1 - int_nono,
+    us_disapprov = 1 - usapprov,
+    eu_disapprov = 1 - euapprov,
+    ukraine_disapprov = 1 - ukrapprov
+  )
+```
+
+Time series data is data with a time element. We also call this dynamic data (vs. static/cross-section data). Can be: 
+
+- Panel data (units you follow over time; e.g., survey the same people every year, or track the same countries' GDP every year)
+- Repeated cross-section data (multiple units observed at multiple time points, but not the same units each time; e.g., practicum data)
+
+
+## Uses of time-series data
+
+- Forecasting (in class: find examples of things useful to forecast)
+- Improve causal inference: 
+  - Understand the importance of events (e.g. how did the 2008 financial crisis affect the economy?)
+  - Understand treatment effect dynamics (e.g. how long does a policy's effect last?)
+  - Estimate causal effects even when treatment is not randomly assigned
+
+## Analyzing repeated cross-section data: the practicum case
+
+Eight years before the Russian full-scale invasion into Ukraine, on February 27th of 2014, Vladimir Putin illegally annexed the Ukrainian peninsula of Crimea. His approval ratings soared. 
+
+Why did the annexation of Crimea boost his approval? 
+
+- One argument is that the Russian state propaganda machine, mostly through television, was an important factor. 
+- Another argument is that resentment toward the West, and in particular Western sanctions against Russia, led people to view Crimea's annexation as a blow against their oppressors. 
+- Yet others argue that it was mere territorial expansion that made people approve of Putin. 
+
+## Battle plan
+
+- One argument is that the Russian state propaganda machine, mostly through television, was an important factor. 
+  - We can test this by looking at whether people who watch more news increase their approval more after annexation.
+- Another argument is that resentment toward the West, and in particular Western sanctions against Russia, led people to view Crimea's annexation as a blow against their oppressors. 
+  - We can test this by looking at whether people who are more resentful of the West increase their approval more after annexation.
+- Yet others argue that it was mere territorial expansion that made people approve of Putin. 
+  - We can test this by looking at whether people who are more nationalistic increase their approval more after annexation.
+
+# Establishing the baseline: did approval increase?
+
+# Simple visualization
+
+```{r}
+#| label: approval-plot simple
+
+df |>
+  group_by(after) |>
+  summarize(approval = mean(approval, na.rm = T)) |>
+  ggplot(aes(x = after, y = approval)) +
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = c(0, 1), labels = c("Before", "After")) +
+  labs(
+    x = "Time",
+    y = "Mean approval",
+    title = "Putin's approval before and after Crimea annexation"
+  ) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  theme_minimal()
+```
+
+## With regression
+
+$y_{it}$, Putin's approval rating for individual $i$ at time $t \in \{\text{before} = 0, \text{after} = 1\}$. 
+
+$$
+y_{it} = \alpha + \beta \cdot t + \epsilon_{it}
+$$
+
+. . .
+
+- $\alpha$ is the mean approval before annexation (when $t=0$).
+- $\alpha + \beta$ is the mean approval after annexation (when $t=1$).
+- $\beta$ is the change in approval after annexation (when $t=1$). This is the key parameter of interest: if $\beta > 0$, then approval increased after annexation.
+
+```{r}
+#| label: approval-reg simple
+
+lm(approval ~ after, data = df) |>
+  modelsummary(
+    stars = TRUE,
+    coef_rename = c("after" = "After annexation"),
+    gof_map = c("nobs", "r.squared")
+  )
+```
+
+## Visualizing the regression results
+
+```{r}
+#| label: approval-plot
+
+lm(approval ~ after, data = df) |>
+  broom::augment(
+    newdata = tibble(after = c(0, 1)),
+    interval = "confidence"
+  ) |>
+  ggplot(aes(x = after, y = .fitted, ymin = .lower, ymax = .upper)) +
+  geom_point() +
+  geom_line() +
+  geom_errorbar(aes(), width = 0.1) +
+  scale_x_continuous(breaks = c(0, 1), labels = c("Before", "After")) +
+  labs(
+    x = "Time",
+    y = "Mean approval",
+    title = "Putin's approval before and after Crimea annexation"
+  ) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  theme_minimal()
+```
+
+# Testing the resentment hypothesis
+
+## Candidate variables
+
+- `us_disapprov`: disapproval of the United States.
+- `eu_disapprov`: disapproval of the European Union.
+- `dsxnshrm2`: belief that Western sanctions harm ordinary people in Russia. -> only asked in one wave, so we can't use it.
+
+## Simple visualization
+
+```{r}
+#| label: approval-plot resentment
+
+df |>
+  group_by(after, us_disapprov) |>
+  summarize(approval = mean(approval, na.rm = T)) |>
+  mutate(us_disapprov = ifelse(us_disapprov == 1, "Yes", "No")) |>
+  ggplot(aes(
+    x = after,
+    y = approval,
+    color = us_disapprov,
+    group = us_disapprov
+  )) +
+  geom_point() +
+  geom_line() +
+  scale_x_continuous(breaks = c(0, 1), labels = c("Before", "After")) +
+  labs(
+    x = "Time",
+    y = "Mean approval",
+    title = "Putin's approval before and after Crimea annexation"
+  ) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  theme_minimal()
+```
+
+## With regression
+
+$y_{it}$, Putin's approval rating for individual $i$ at time $t \in \{\text{before} = 0, \text{after} = 1\}$.
+
+$x_{it}$, whether individual $i$ disapproves of the United States at time $t$.
+
+$$
+y_{it} = \alpha + \beta_1 t + \beta_2 x_{it} + \beta_3 t x_{it} + \epsilon_{it}
+$$
+
+. . .
+
+- $\alpha$: approves of US, before.
+- $\alpha + \beta_1$: approves of US, after.
+- $\alpha + \beta_2$: disapproves of US, before.
+- $\alpha + \beta_1 + \beta_2 + \beta_3$: disapproves of US, after.
+- $\beta_1$: change in approval after annexation for those who approve of the US.
+- $\beta_1 + \beta_3$: change in approval after annexation for those who disapprove of the US.
+- $\beta_3$: extra change in approval after annexation for those who disapprove of the US.
+- If $\beta_3 > 0$, resentful respondents rallied more around Putin than non-resentful respondents after annexation.
+
+. . .
+
+```{r}
+#| label: approval-reg resentment
+
+lm(approval ~ after * us_disapprov, data = df) |>
+  modelsummary(
+    stars = TRUE,
+    coef_rename = c(
+      "after" = "After annexation",
+      "us_disapprov" = "Disapproves of US"
+    ),
+    gof_map = c("nobs", "r.squared")
+  )
+```
+
+## Robustness (1): adding controls
+
+```{r}
+#| label: approval-reg resentment controls
+
+list(
+  lm(approval ~ after, data = df),
+  lm(approval ~ after * us_disapprov, data = df),
+  lm(approval ~ after * us_disapprov + age + female + educ, data = df)
+  # add regression with us_disapprov having explicitly coded NAs + controls
+) |>
+  modelsummary(
+    stars = TRUE,
+    coef_rename = c(
+      "after" = "After annexation",
+      "us_disapprov" = "Disapproves of US",
+      "age" = "Age",
+      "female" = "Female",
+      "educ" = "Education"
+    ),
+    gof_map = c("nobs", "r.squared")
+  )
+```
+
+## Robustness (2): scaling up
+
+```{r}
+#| label: robustness resentment
+
+list(
+  lm(approval ~ after * us_disapprov, data = df),
+  lm(approval ~ after * us_disapprov + age + female + educ, data = df),
+  lm(approval ~ after * eu_disapprov, data = df),
+  lm(approval ~ after * eu_disapprov + age + female + educ, data = df)
+) |>
+  modelsummary(
+    stars = TRUE,
+    coef_map = c(
+      "after" = "After",
+      "us_disapprov" = "Yes",
+      "eu_disapprov" = "Yes",
+      "after:us_disapprov" = "After x Yes",
+      "after:eu_disapprov" = "After x Yes"
+    ),
+    gof_map = c("nobs", "r.squared"),
+    add_rows = matrix(
+      c("Controls", rep(c("No", "Yes"), 2)),
+      nrow = 1
+    ) |>
+      as.data.frame()
+  ) |>
+  tinytable::group_tt(
+    j = list(
+      "Disapproves of US" = 2:3,
+      "Disapproves of EU" = 4:5
+    )
+  )
+```
+
+
+# Other hypotheses
+
+## Candidate variables
+
+
+- News watching:
+  - `int_yes`: has internet (best proxy for news-watching that we have).
+  - `int_news`: watches news on the internet.
+  - `pol_news`: remembers political events in the news.
+  - `pol_news_count`: number of political events in the news that the respondent remembers.
+- Nationalism:
+  - `hyp_ldpr`: would vote for the LDPR (the most nationalist party in Russia).
+  - `vote_zhirin`: voted for Zhirinovsky in 2012 (the most nationalist candidate in the 2012 presidential election).
+
+## News watching hypothesis
+
+```{r}
+#| label: robustness
+
+list(
+  lm(approval ~ after * int_yes, data = df),
+  lm(approval ~ after * int_yes + age + female + educ, data = df),
+  lm(approval ~ after * int_news, data = df),
+  lm(approval ~ after * int_news + age + female + educ, data = df),
+  lm(approval ~ after * pol_news, data = df),
+  lm(approval ~ after * pol_news_count, data = df),
+  lm(approval ~ after * pol_news + age + female + educ, data = df),
+  lm(approval ~ after * pol_news_count + age + female + educ, data = df)
+) |>
+  modelsummary(
+    stars = TRUE,
+    coef_map = c(
+      "after" = "After",
+      "int_yes" = "Yes",
+      "int_news" = "Yes",
+      "pol_news" = "Yes",
+      "pol_news_count" = "Yes",
+      "after:int_yes" = "After x Yes",
+      "after:int_news" = "After x Yes",
+      "after:pol_news" = "After x Yes",
+      "after:pol_news_count" = "After x Yes"
+    ),
+    gof_map = c("nobs", "r.squared"),
+    add_rows = matrix(
+      c("Controls", rep(c("No", "Yes"), 4)),
+      nrow = 1
+    ) |>
+      as.data.frame()
+  ) |>
+  tinytable::group_tt(
+    j = list(
+      "Internet" = 2:3,
+      "Internet for news" = 4:5,
+      "Remembers pol. evts" = 6:7,
+      "Remembers (count)" = 8:9
+    )
+  )
+```
+
+## Nationalism hypothesis
+
+```{r}
+#| label: robustness territorial
+
+list(
+  lm(approval ~ after * ukraine_disapprov, data = df),
+  lm(approval ~ after * ukraine_disapprov + age + female + educ, data = df),
+  lm(approval ~ after * hyp_ldpr, data = df),
+  lm(approval ~ after * hyp_ldpr + age + female + educ, data = df),
+  lm(approval ~ after * vote_zhirin, data = df),
+  lm(approval ~ after * vote_zhirin + age + female + educ, data = df)
+) |>
+  modelsummary(
+    stars = TRUE,
+    coef_map = c(
+      "after" = "After",
+      "ukraine_disapprov" = "Yes",
+      "hyp_ldpr" = "Yes",
+      "vote_zhirin" = "Yes",
+      "after:ukraine_disapprov" = "After x Yes",
+      "after:hyp_ldpr" = "After x Yes",
+      "after:vote_zhirin" = "After x Yes"
+    ),
+    gof_map = c("nobs", "r.squared"),
+    add_rows = matrix(
+      c("Controls", rep(c("No", "Yes"), 3)),
+      nrow = 1
+    ) |>
+      as.data.frame()
+  ) |>
+  tinytable::group_tt(
+    j = list(
+      "Disapproves of Ukraine" = 2:3,
+      "Would vote LDPR" = 4:5,
+      "Voted Zhirinovsky 2012" = 6:7
+    )
+  )
+```
+
+# Overall results
+
+- No evidence for the news-watching hypothesis.
+- Mixed evidence for the resentment hypothesis: disapproval of the US seems to be associated with a bigger increase in approval after annexation, but disapproval of the EU does not.
+- Stronger evidence for the nationalism hypothesis: support for the ultranationalist party associated with a bigger increase in approval after annexation.
+
+# Limitations
+
+- Measurement error: our measures of news-watching is imperfect (internet instead of TV)
+- Missing data: we should have checked looked into missingness (e.g. use explicity NAs).
+- Causality
+
+# Causality
+
+## Our treatment: annexation of Crimea.
+
+- What is our control group? None: we don't have a group of people who were not exposed to the annexation. We only have before and after measures for the same population.
+- So we can't establish causality: we can't rule out that some other event that happened around the same time as the annexation caused the increase in approval.
+
+## Moderators: resentment, nationalism, news-watching.
+
+- We measure most of our moderators at the time of the survey, so for the "after" survey, we measure it after the annexation. This means that we can't rule out that the annexation caused an increase in resentment or nationalism, which in turn caused an increase in approval. In other words, we can't rule out that resentment and nationalism are **mediators** rather than **moderators** of the effect of annexation on approval.
+- Only one of our moderators should be measured before annexation (vote for Zhirinovsky)
+- $\Rightarrow$ **panel** data with the same respondents before and after annexation would allow us to measure all moderators before annexation and thus establish causality more convincingly.

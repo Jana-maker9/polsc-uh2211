@@ -1,0 +1,232 @@
+---
+title: "Lecture 17: Missing data and measurement error"
+---
+
+```{r}
+#| label: setup
+#| echo: false
+
+suppressPackageStartupMessages(library(tidyverse))
+library(modelsummary)
+source("./lectures/helpers.R")
+
+df <- read_csv("./data/lecture-7-gss.csv", show_col_types = FALSE) |>
+  clean_gss()
+```
+
+## Data quality problems
+
+Every dataset has quality problems. They come in two basic flavors.
+
+**Measurement error** occurs when we record a value, but it is wrong. A thermometer that reads 99°C when water is actually boiling at 100°C is a simple case. In social science, a survey respondent who slightly exaggerates their income is another.
+
+**Missing data** occurs when we fail to record a value at all. A respondent who refuses to report income leaves a blank where a number should be. Missing data can be thought of as an extreme form of measurement error — the error is so large that we cannot recover any useful value.
+
+Both problems can be random or systematic. A random problem is unsystematic: the errors have no particular direction and cancel out across observations. A systematic problem follows a pattern and biases our estimates. Systematic problems are worse, but random ones are not harmless either — they add noise; i.e., they reduce precision.
+
+# Measurement error
+
+## Thinking about measurement error
+
+Statistics starts with a simple model of measurement:
+
+$$y = \tilde{y} + \varepsilon$$
+
+where $\tilde{y}$ is the true (unobserved) value, $y$ is what we actually record, and $\varepsilon$ is the measurement error. This framework applies equally to two situations that look different on the surface. When we measure the boiling point of water, $y$ is the true boiling point, $y$ is one reading from an imperfect thermometer, and $\varepsilon$ is the instrument error. When we sample from a population, $y$ is the true population mean (e.g., average class height), $y$ is the mean of our sample, and $\varepsilon$ is sampling error. The math is the same — measurement error and sampling error are analogous phenomena.
+
+## Why averaging works
+
+```{r}
+#| label: measurement-error
+#| fig-height: 4
+
+set.seed(42)
+tibble(measurement = rnorm(1000, mean = 100, sd = 2)) |>
+  ggplot(aes(x = measurement)) +
+  geom_density(fill = "steelblue", alpha = 0.4) +
+  geom_vline(
+    xintercept = 100,
+    linetype = "dashed",
+    color = "red",
+    linewidth = 1
+  ) +
+  annotate(
+    "text",
+    x = 100.3,
+    y = 0.15,
+    label = "True value (100°C)",
+    hjust = 0,
+    color = "red"
+  ) +
+  scale_x_continuous(limits = c(93, 107)) +
+  labs(
+    title = "1,000 measurements of the boiling point of water",
+    x = "Measured temperature (°C)",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
+
+When errors are random — some readings too high, some too low — averaging many measurements cancels them out and recovers the true value. The law of large numbers formalizes this intuition, and it is the foundation for p-values and confidence intervals. **This only works when errors are truly random.** If every thermometer in the lab reads 1°C too high, averaging a thousand measurements just gives a more precise estimate of the wrong value.
+
+## Random measurement error
+
+Consider two research questions, which have different implications for where measurement error matters.
+
+**Question 1:** At what temperature does water boil? We want to estimate $\tilde{y}$ directly from $y = \tilde{y} + \varepsilon$.
+
+| Source of error | Consequence | Fix |
+|---|---|---|
+| Error in $y$ | Noisy estimate, but unbiased | More observations or a better instrument |
+
+**Question 2:** How does boiling point vary with salinity? We want to estimate $\beta$ in $y = \alpha + \beta x + \varepsilon$, where $x$ is salinity.
+
+| Source of error | Consequence | Fix |
+|---|---|---|
+| Error in $y$ | Noisy $\hat{\beta}$, but unbiased | More observations or a better instrument |
+| Error in $x$ | $\hat{\beta}$ biased toward zero | A better instrument only |
+
+When the error is in the outcome $y$, more data fixes the problem. When the error is in a predictor $x$, we have a more serious situation called **attenuation bias**.
+
+## Attenuation bias: intuition
+
+Suppose salinity is measured with error: $\tilde{x} = x + \varepsilon$. Variation in $\tilde{x}$ now reflects two things mixed together — genuine variation in salinity and random noise. Regression has no way to separate them. Because some of the variation in $\tilde{x}$ is pure noise unrelated to the outcome, the estimated relationship appears weaker than it really is. The slope $\hat{\beta}$ shrinks toward zero. More data does not help here, because each additional observation has the same measurement problem. Only measuring $x$ more accurately resolves the bias.
+
+## Systematic measurement error
+
+$$
+\tilde{y} = y + c + \varepsilon
+$$
+
+When there is a constant $c$ on top of random error, every measurement is wrong in the same direction. A thermometer batch from a defective supplier that consistently reads 1°C too high is a clean example. Averaging gives more and more precise estimates of the wrong value. No amount of data fixes this — you need better instruments or a different measurement strategy.
+
+A subtler social science example: suppose we are studying how supporting Trump predicts distrust of government. Being a Trump supporter may be socially undesirable in some communities, so some genuine non-supporters claim to support Trump to appear contrarian, while some actual Trump supporters stay quiet. The result is "fake" values in the Trump-supporter variable: some coded ones that should be zeros, and some coded zeros that should be ones. This systematically distorts the estimated gap in government trust between the two groups — typically making it appear smaller than it really is.
+
+## Social science examples: random or systematic?
+
+**"On a scale of 1–10, how happy are you?"** Different respondents use different parts of the scale — some people use the full range, others cluster in the middle. This is likely random: the idiosyncratic ways people interpret the scale average out across many respondents, adding noise but not consistent bias.
+
+**"Have you ever paid a bribe?"** Here the error is systematic. Respondents who have paid bribes systematically underreport because it is socially undesirable (and sometimes illegal) to admit it. The result is a set of false zeros — people coded as non-bribe-payers who actually have paid bribes. This means survey estimates of bribery prevalence are always too low.
+
+## Solutions to systematic measurement error
+
+The first solution is to use better measurement tools. Survey researchers have developed techniques specifically to reduce social desirability bias, such as randomized response methods that give respondents plausible deniability.
+
+The second, often unavoidable, solution is to reason carefully about the direction of the bias and interpret your results accordingly. Suppose you find that government trust is 0.5 among non-Trump supporters and 0.3 among Trump supporters — a gap of 0.2. If non-Trump supporters are more likely to give socially desirable answers, then some people who genuinely distrust the government are being coded as trusters. That pushes the non-supporter mean artificially high, which means the *true* gap is likely larger than 0.2. The key question to ask yourself: where are the people giving wrong answers, and which direction would their true answers push the estimate?
+
+# Missing data
+
+## Missing data as extreme measurement error
+
+Missing data follows the same random/systematic taxonomy. When missingness is unrelated to any variable in the analysis — say, survey respondents randomly skip some questions because they are fatigued — the sample becomes smaller and noisier but not biased. When missingness is related to the variable being measured, estimates are biased and more data does not help.
+
+The income example is a classic case of systematic missingness. High-income respondents are less likely to report their income — perhaps out of privacy concerns. As a result, the reported incomes in our dataset skew low, and the average we compute is an underestimate. A useful diagnostic: look at who is missing and check whether they differ on other variables you can observe. If the respondents who skipped the income question disproportionately report listening to classical music (a proxy for high income), that is a strong signal that the missingness is systematic, not random.
+
+## Solutions to missing data
+
+**Complete-case analysis** is the default: drop any observation that is missing a value on any variable used in the analysis. It is simple and transparent, but it reduces sample size and may bias estimates if the dropped observations are not a random subset.
+
+**Missingness as a category** is a useful diagnostic step. Recode the missing variable as zero and add a binary indicator equal to 1 when the value is missing. If that indicator correlates with your outcome, it is evidence that missingness is systematic. This approach also lets you use all your data while acknowledging the missing values explicitly.
+
+**Imputation** fills in the missing values with estimates. Mean imputation replaces each missing value with the variable's observed mean — it is easy but does not address systematic missingness. Regression imputation is more principled: predict the missing variable from all the other variables you observe for that respondent. The intuition is that an observation with 9 of 10 variables observed is worth saving; throwing it away discards nine good measurements to avoid one unknown. Predict the tenth from the nine you have, and use the full observation. The caveat is that imputation is only as good as the imputation model. When missingness is systematic, the regression inherits the bias.
+
+# In practice
+
+## Two rules
+
+In practice, we rarely know whether data problems are random or systematic. Two rules help make your analysis robust and transparent:
+
+**Rule 1:** Show results with and without controls, so readers can see how sensitive the estimates are to model specification.
+
+**Rule 2:** Keep the sample size constant across all specifications. This rule is easy to overlook but important. If your baseline model uses 800 observations and your fully-controlled model uses 500 (because some control variables have missing data), you cannot tell whether a change in the coefficient reflects the added controls or the different sample. Fix the sample to the intersection of all observations needed for the most demanding specification, then run all models on that fixed set.
+
+## A bad example
+
+```{r}
+#| label: bad-example
+
+modelsummary(
+  list(
+    "Education only" = lm(income ~ edu, data = df),
+    "Education + Race + Age" = lm(income ~ edu + race + age, data = df)
+  ),
+  stars = TRUE,
+  gof_map = c("nobs", "r.squared"),
+  title = "Bad: sample sizes differ across models"
+)
+```
+
+## Good example 1: fix the sample first
+
+```{r}
+#| label: good-example-1
+
+df_complete <- df |> drop_na(income, edu, race, age)
+
+modelsummary(
+  list(
+    "Education only" = lm(income ~ edu, data = df_complete),
+    "Education + Race + Age" = lm(income ~ edu + race + age, data = df_complete)
+  ),
+  stars = TRUE,
+  gof_map = c("nobs", "r.squared"),
+  title = "Better: same sample across all models"
+)
+```
+
+## Good example 2: also show the full sample
+
+```{r}
+#| label: good-example-2
+
+modelsummary(
+  list(
+    "Full sample" = lm(income ~ edu, data = df),
+    "Complete cases" = lm(income ~ edu, data = df_complete),
+    "Complete cases + Controls" = lm(
+      income ~ edu + race + age,
+      data = df_complete
+    )
+  ),
+  stars = TRUE,
+  gof_map = c("nobs", "r.squared"),
+  title = "Best: full sample, complete cases, and controls"
+)
+```
+
+## Reading the three-column table
+
+The three-column layout decomposes the analysis cleanly. Moving from column 1 to column 2 shows only the effect of restricting to complete cases — the sample changes, but the specification does not. Moving from column 2 to column 3 shows only the effect of adding controls, with the sample held fixed. This decomposition is what a careful reader needs to decide whether they trust your results.
+
+# To remember
+
+1. Two types of data quality problems: measurement error and missing data.
+2. Both can be random (adds noise) or systematic (biases estimates).
+3. Random problems can often be fixed with more data — except attenuation bias, which requires a better instrument.
+4. Systematic problems require better data collection or careful reasoning about the direction of the bias.
+5. Show results with and without controls, and keep the sample size constant across all specifications.
+
+# An aside: linear regression vs. logistic regression
+
+## A common misconception
+
+- Linear regression: $y = \alpha + \beta x + \varepsilon$
+- Logistic regression: $y = \frac{1}{1+\exp[-(\alpha + \beta x + \varepsilon)]}$
+
+A common piece of advice is that binary outcomes require logistic regression. This is not quite right. Linear regression can be used with binary outcomes and often performs just as well.
+
+## Advantages of linear regression with binary outcomes
+
+The main practical advantage of linear regression is interpretability. With a binary outcome, the linear model estimates conditional means, which are directly interpretable as probabilities. Consider an example where approval of Putin is coded 1 (approves) and 0 (disapproves), and watching TV is coded 1 (watches) and 0 (does not watch):
+
+$$\text{approves}_i = 0.4 + 0.1 \times \text{TV}_i$$
+
+The intercept tells us that 40% of non-TV-watchers approve of Putin. The coefficient tells us that TV-watchers approve at a rate 10 percentage points higher. This interpretation is immediate and requires no transformation. Logistic regression produces log-odds, which require an extra step to convert to probabilities and are rarely reported directly.
+
+In practice, linear and logistic regression tend to give similar substantive conclusions. The difference is primarily in the mechanics, not the results.
+
+## You don't need the main advantage of logistic regression
+
+Logistic regression's main technical advantage is that it constrains predicted values to the interval (0, 1). Linear regression can, in principle, produce predicted probabilities below 0 or above 1. In practice, this only happens for covariate values that are impossible or extremely rare. A model predicting Putin approval as a function of age might produce a predicted probability of -0.12 for an 18-year-old if the relationship is calibrated to a sample of mostly older respondents — but that edge case rarely matters for the interpretive claims we actually want to make ("older people are more likely to approve of Putin").
+
+Logistic regression is genuinely useful when you need well-calibrated probabilities for downstream calculations — for example, if you are estimating survey completion rates to calculate staffing costs. If your goal is to describe and interpret relationships in observational data, linear regression is almost always sufficient.

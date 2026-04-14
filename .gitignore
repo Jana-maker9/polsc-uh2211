@@ -13,6 +13,9 @@
 .RData
 .RDataTmp
 
+docs/lectures/lecture-20-21*
+.claude
+
 # User-specific files
 .Ruserdata
 
